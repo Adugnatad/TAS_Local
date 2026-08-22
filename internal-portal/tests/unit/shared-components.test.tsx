@@ -1,0 +1,43 @@
+import { describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { StatusBadge } from "@/components/shared/StatusBadge";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { ErrorState } from "@/components/shared/ErrorState";
+
+function wrapper({ children }: { children: React.ReactNode }) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+}
+
+describe("StatusBadge", () => {
+  it("renders onboarding status label", () => {
+    render(<StatusBadge status="pending_review" label="Pending Review" />);
+    expect(screen.getByText("Pending Review")).toBeInTheDocument();
+  });
+
+  it("renders request status label", () => {
+    render(<StatusBadge status="in_progress" label="In Progress" />);
+    expect(screen.getByText("In Progress")).toBeInTheDocument();
+  });
+});
+
+describe("EmptyState", () => {
+  it("renders title and description", () => {
+    render(<EmptyState title="No data" description="Try again later." />);
+    expect(screen.getByText("No data")).toBeInTheDocument();
+    expect(screen.getByText("Try again later.")).toBeInTheDocument();
+  });
+});
+
+describe("ErrorState", () => {
+  it("renders error message and retry button", () => {
+    const onRetry = vi.fn();
+    render(<ErrorState onRetry={onRetry} />);
+    expect(screen.getByText("Something went wrong")).toBeInTheDocument();
+    screen.getByRole("button", { name: "Try again" }).click();
+    expect(onRetry).toHaveBeenCalledOnce();
+  });
+});
