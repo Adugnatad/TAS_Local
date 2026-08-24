@@ -7,7 +7,7 @@ interface TableSkeletonProps {
 
 export function TableSkeleton({ rows = 5, columns = 5 }: TableSkeletonProps) {
   return (
-    <div className="space-y-3" aria-label="Loading table data" role="status">
+    <div className="space-y-3 rounded-xl bg-card p-4 ring-1 ring-border" aria-label="Loading table data" role="status">
       <div className="flex gap-4">
         {Array.from({ length: columns }).map((_, i) => (
           <Skeleton key={i} className="h-10 flex-1" />

@@ -10,13 +10,21 @@ function combinations<T>(items: T[], k: number): T[][] {
   return [...withFirst, ...withoutFirst];
 }
 
-function satisfiesRule(combo: Signatory[], rule: SignatoryRule): boolean {
+export function satisfiesRule(combo: Signatory[], rule: SignatoryRule): boolean {
+  if (rule.dualControl && combo.length < 2) return false;
   if (combo.length < rule.minSignatories) return false;
+  if (rule.maxSignatories && combo.length > rule.maxSignatories) return false;
+
   if (rule.requiredRoles?.length) {
     const comboRoles = new Set(combo.map((s) => s.role));
-    const hasAllRoles = rule.requiredRoles.every((role) => comboRoles.has(role));
-    if (!hasAllRoles) return false;
+    const match = rule.roleMatch ?? "all";
+    const ok =
+      match === "any"
+        ? rule.requiredRoles.some((role) => comboRoles.has(role))
+        : rule.requiredRoles.every((role) => comboRoles.has(role));
+    if (!ok) return false;
   }
+
   const totalLimit = combo.reduce((sum, s) => sum + s.signatureLimit, 0);
   return totalLimit >= rule.amountThreshold || combo.some((s) => s.signatureLimit >= rule.amountThreshold);
 }
@@ -41,7 +49,12 @@ export function evaluateMatrixPreview(
     };
   }
 
-  const maxSignatories = Math.min(activeSignatories.length, 4);
+  const requestedCap = Math.max(
+    4,
+    ...applicableRules.map((r) => r.maxSignatories ?? 0),
+    ...applicableRules.map((r) => r.minSignatories),
+  );
+  const maxSignatories = Math.min(activeSignatories.length, Math.min(requestedCap, 6));
   const allCombos: Signatory[][] = [];
   for (let k = 1; k <= maxSignatories; k++) {
     allCombos.push(...combinations(activeSignatories, k));

@@ -18,6 +18,8 @@ import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -25,11 +27,13 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { FormSection } from "@/components/ui/form-section";
 import {
   Table,
   TableBody,
@@ -42,6 +46,16 @@ import { Badge } from "@/components/ui/badge";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { TableSkeleton } from "@/components/shared/TableSkeleton";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { useSignatoryTitles } from "@/features/settings/hooks/useSettings";
+import { useCan } from "@/features/settings/hooks/useCan";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Card } from "@/components/ui/card";
 
 interface SignatoryListProps {
   customerId: string;
@@ -58,7 +72,11 @@ function SignatoryFormDialog({
 }) {
   const createMutation = useCreateSignatory(customerId);
   const updateMutation = useUpdateSignatory(customerId);
+  const { data: titles = [] } = useSignatoryTitles();
   const isEdit = !!signatory;
+  const titleOptions = titles.filter(
+    (title) => title.isActive || title.name === signatory?.role,
+  );
 
   const form = useForm<SignatoryFormValues>({
     resolver: zodResolver(signatorySchema),
@@ -87,49 +105,73 @@ function SignatoryFormDialog({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="fullName"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Full Name</FormLabel>
-              <FormControl>
-                <Input {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="role"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Role</FormLabel>
-              <FormControl>
-                <Input {...field} placeholder="e.g. Managing Director" />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="signatureLimit"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Signature Limit (PHP)</FormLabel>
-              <FormControl>
-                <Input type="number" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
-          {isEdit ? "Update" : "Add Signatory"}
-        </Button>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <FormSection
+          title="Signatory identity"
+          description="Name and corporate title used in the approval matrix."
+          columns={2}
+        >
+          <FormField
+            control={form.control}
+            name="fullName"
+            render={({ field }) => (
+              <FormItem className="sm:col-span-2">
+                <FormLabel>Full name</FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g. Roberto Garcia" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="role"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Title</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger aria-label="Role">
+                      <SelectValue placeholder="Select a title" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {titleOptions.map((title) => (
+                      <SelectItem key={title.id} value={title.name}>
+                        {title.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormDescription>From the COOP signatory title catalog.</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="signatureLimit"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Signature limit (PHP)</FormLabel>
+                <FormControl>
+                  <Input type="number" min={0} {...field} />
+                </FormControl>
+                <FormDescription>Maximum amount this person may cover alone.</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </FormSection>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+            {isEdit ? "Save signatory" : "Add signatory"}
+          </Button>
+        </DialogFooter>
       </form>
     </Form>
   );
@@ -140,6 +182,7 @@ export function SignatoryList({ customerId }: SignatoryListProps) {
   const [editingSignatory, setEditingSignatory] = useState<Signatory | undefined>();
   const { data, isLoading, isError, refetch } = useSignatories(customerId);
   const updateMutation = useUpdateSignatory(customerId);
+  const canManage = useCan("signatories.manage");
 
   async function toggleActive(signatory: Signatory) {
     try {
@@ -155,8 +198,14 @@ export function SignatoryList({ customerId }: SignatoryListProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Signatories</h3>
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-border/70 pb-3">
+        <div>
+          <h3 className="text-base font-semibold tracking-tight">Signatories</h3>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Authorized people and their signing limits for this customer.
+          </p>
+        </div>
+        {canManage && (
         <Dialog
           open={dialogOpen}
           onOpenChange={(open) => {
@@ -166,7 +215,7 @@ export function SignatoryList({ customerId }: SignatoryListProps) {
         >
           <DialogTrigger
             render={
-              <Button size="sm">
+              <Button>
                 <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
                 Add Signatory
               </Button>
@@ -175,8 +224,13 @@ export function SignatoryList({ customerId }: SignatoryListProps) {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
-                {editingSignatory ? "Edit Signatory" : "Add Signatory"}
+                {editingSignatory ? "Edit signatory" : "Add signatory"}
               </DialogTitle>
+              <DialogDescription>
+                {editingSignatory
+                  ? "Update this person’s title and signing authority."
+                  : "Add an authorized signatory for this corporate customer."}
+              </DialogDescription>
             </DialogHeader>
             <SignatoryFormDialog
               customerId={customerId}
@@ -188,6 +242,7 @@ export function SignatoryList({ customerId }: SignatoryListProps) {
             />
           </DialogContent>
         </Dialog>
+        )}
       </div>
 
       {isLoading && <TableSkeleton rows={4} columns={4} />}
@@ -199,7 +254,7 @@ export function SignatoryList({ customerId }: SignatoryListProps) {
         />
       )}
       {!isLoading && !isError && data && data.length > 0 && (
-        <div className="rounded-md border">
+        <Card className="overflow-hidden py-0">
           <Table>
             <TableHeader>
               <TableRow>
@@ -224,6 +279,7 @@ export function SignatoryList({ customerId }: SignatoryListProps) {
                     </Badge>
                   </TableCell>
                   <TableCell>
+                    {canManage ? (
                     <div className="flex gap-1">
                       <Button
                         variant="ghost"
@@ -244,12 +300,15 @@ export function SignatoryList({ customerId }: SignatoryListProps) {
                         {signatory.isActive ? "Deactivate" : "Activate"}
                       </Button>
                     </div>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
-        </div>
+            </Table>
+          </Card>
       )}
     </div>
   );

@@ -58,8 +58,44 @@ export const ROLE_LABELS: Record<OfficerRole, string> = {
   admin: "Administrator",
 };
 
-export const NAV_ITEMS = [
+export const CAPABILITIES = [
+  "onboarding.approve",
+  "signatories.manage",
+  "rules.manage",
+  "settings.manage",
+  "users.manage",
+] as const;
+export type Capability = (typeof CAPABILITIES)[number];
+
+export const CAPABILITY_LABELS: Record<Capability, string> = {
+  "onboarding.approve": "Approve / reject onboarding",
+  "signatories.manage": "Manage customer signatories",
+  "rules.manage": "Manage signatory rules",
+  "settings.manage": "Edit signatory settings",
+  "users.manage": "Manage portal users",
+};
+
+export const DEFAULT_ROLE_PERMISSIONS: Record<OfficerRole, Capability[]> = {
+  officer: ["signatories.manage"],
+  supervisor: ["onboarding.approve", "signatories.manage", "rules.manage", "settings.manage"],
+  admin: [
+    "onboarding.approve",
+    "signatories.manage",
+    "rules.manage",
+    "settings.manage",
+    "users.manage",
+  ],
+};
+
+export const NAV_ITEMS: Array<{
+  href: string;
+  label: string;
+  roles: readonly OfficerRole[];
+}> = [
   { href: "/onboarding", label: "Customer Onboarding", roles: OFFICER_ROLES },
   { href: "/signatory-matrix", label: "Signatory Matrix", roles: OFFICER_ROLES },
   { href: "/status", label: "Status Viewer", roles: OFFICER_ROLES },
-] as const;
+  { href: "/users", label: "Users", roles: ["admin"] },
+  { href: "/settings", label: "Settings", roles: ["supervisor", "admin"] },
+  { href: "/profile", label: "Profile", roles: OFFICER_ROLES },
+];

@@ -1,27 +1,39 @@
-import { Check, Circle } from "lucide-react";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import { REQUEST_STATUS_LABELS } from "@/lib/constants";
 import type { RequestStatusDetail } from "../types";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface RequestTimelineProps {
   request: RequestStatusDetail;
 }
 
-export function RequestTimeline({ request }: RequestTimelineProps) {
+function MetaItem({ label, value }: { label: string; value: string }) {
   return (
-    <div className="space-y-6">
+    <div className="min-w-0">
+      <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </dt>
+      <dd className="mt-1 truncate text-sm font-medium text-foreground">{value}</dd>
+    </div>
+  );
+}
+
+export function RequestTimeline({ request }: RequestTimelineProps) {
+  const currentIndex = request.stages.findIndex((s) => s.isCurrent);
+
+  return (
+    <div className="mx-auto max-w-3xl space-y-5">
       <Card>
-        <CardHeader>
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <CardTitle>{request.id}</CardTitle>
-              <p className="mt-1 text-muted-foreground">{request.customerName}</p>
+        <CardHeader className="border-b">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="font-mono text-xs text-muted-foreground">{request.id}</p>
+              <CardTitle className="mt-1 text-lg">{request.customerName}</CardTitle>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="secondary" className="capitalize">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className="capitalize">
                 {request.type}
               </Badge>
               <StatusBadge
@@ -31,89 +43,73 @@ export function RequestTimeline({ request }: RequestTimelineProps) {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-3">
-          <div>
-            <p className="text-sm text-muted-foreground">Amount</p>
-            <p className="font-semibold">{formatCurrency(request.amount)}</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Submitted</p>
-            <p className="font-semibold">{formatDate(request.submittedAt)}</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Last Updated</p>
-            <p className="font-semibold">{formatDate(request.lastUpdatedAt)}</p>
-          </div>
+        <CardContent className="pt-5">
+          <dl className="grid gap-4 rounded-lg border bg-muted/30 px-4 py-3 sm:grid-cols-3">
+            <MetaItem label="Amount" value={formatCurrency(request.amount)} />
+            <MetaItem label="Submitted" value={formatDate(request.submittedAt)} />
+            <MetaItem label="Last updated" value={formatDate(request.lastUpdatedAt)} />
+          </dl>
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="border-b">
           <CardTitle>Request Progress</CardTitle>
+          <CardDescription>
+            Stage history across CoopStream and TSS for this request.
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <ol className="flex flex-col gap-0 sm:flex-row sm:items-start sm:justify-between">
+        <CardContent className="pt-5">
+          <ol className="relative space-y-0 border-l border-border pl-6">
             {request.stages.map((stage, index) => {
               const isCompleted =
                 request.status === "completed" ||
-                request.stages.findIndex((s) => s.isCurrent) > index;
+                (currentIndex >= 0 && index < currentIndex);
               const isCurrent = stage.isCurrent;
+
               return (
-                <li
-                  key={stage.name}
-                  className="relative flex flex-1 flex-col items-start pb-8 sm:items-center sm:pb-0"
-                >
-                  {index < request.stages.length - 1 && (
-                    <div
-                      className={cn(
-                        "absolute left-4 top-4 hidden h-0.5 w-full sm:left-1/2 sm:top-5 sm:block sm:h-0.5",
-                        isCompleted ? "bg-primary" : "bg-border",
-                      )}
-                      aria-hidden="true"
-                    />
-                  )}
-                  <div
+                <li key={stage.name} className="relative pb-6 last:pb-0">
+                  <span
                     className={cn(
-                      "relative z-10 flex h-8 w-8 items-center justify-center rounded-full border-2",
-                      isCompleted
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : isCurrent
-                          ? "border-primary bg-background text-primary"
-                          : "border-border bg-background text-muted-foreground",
+                      "absolute -left-[1.65rem] top-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full border-2 bg-card",
+                      isCompleted && "border-primary bg-primary",
+                      isCurrent && !isCompleted && "border-primary",
+                      !isCompleted && !isCurrent && "border-muted-foreground/35",
                     )}
-                  >
-                    {isCompleted ? (
-                      <Check className="h-4 w-4" aria-hidden="true" />
-                    ) : (
-                      <Circle className="h-3 w-3" aria-hidden="true" />
-                    )}
-                  </div>
-                  <div className="mt-3 text-left sm:text-center">
-                    <p
-                      className={cn(
-                        "text-sm font-medium",
-                        isCurrent ? "text-primary" : "text-foreground",
-                      )}
-                    >
-                      {stage.name}
-                    </p>
-                    {stage.completedAt && (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {formatDate(stage.completedAt)}
+                    aria-hidden="true"
+                  />
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                    <div>
+                      <p
+                        className={cn(
+                          "text-sm font-medium",
+                          isCurrent ? "text-primary" : "text-foreground",
+                        )}
+                      >
+                        {stage.name}
                       </p>
-                    )}
-                    {isCurrent && !stage.completedAt && (
-                      <p className="mt-1 text-xs text-primary">Current stage</p>
+                      {isCurrent && (
+                        <p className="mt-0.5 text-xs text-primary">Current stage</p>
+                      )}
+                    </div>
+                    {stage.completedAt && (
+                      <time className="text-xs text-muted-foreground" dateTime={stage.completedAt}>
+                        {formatDate(stage.completedAt)}
+                      </time>
                     )}
                   </div>
                 </li>
               );
             })}
           </ol>
+
           {request.notes && (
-            <p className="mt-6 rounded-md bg-muted p-4 text-sm text-muted-foreground">
-              {request.notes}
-            </p>
+            <div className="mt-6 rounded-lg border border-border bg-muted/40 px-4 py-3">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Note
+              </p>
+              <p className="mt-1 text-sm leading-relaxed text-foreground">{request.notes}</p>
+            </div>
           )}
         </CardContent>
       </Card>

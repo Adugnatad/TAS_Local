@@ -10,7 +10,13 @@ export async function POST(request: Request, { params }: Context) {
     evaluateMatrixPreview(
       body.amount,
       signatories.filter((item) => item.customerId === params.customerId),
-      signatoryRules.filter((item) => item.customerId === params.customerId),
+      signatoryRules
+        .filter((item) => item.customerId === params.customerId)
+        .map((rule) => ({
+          ...rule,
+          roleMatch: rule.roleMatch ?? "all",
+          dualControl: rule.dualControl ?? false,
+        })),
     ),
   );
 }

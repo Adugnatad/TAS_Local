@@ -8,6 +8,7 @@ import { ErrorState } from "@/components/shared/ErrorState";
 import { TableSkeleton } from "@/components/shared/TableSkeleton";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -18,6 +19,7 @@ import {
 } from "@/components/ui/table";
 import { ONBOARDING_STATUS_LABELS } from "@/lib/constants";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { Card, CardContent } from "@/components/ui/card";
 
 export function SignatoryMatrixCustomerPicker() {
   const [search, setSearch] = useState("");
@@ -35,13 +37,22 @@ export function SignatoryMatrixCustomerPicker() {
         description="Configure signatories and approval rules per corporate customer."
       />
 
-      <Input
-        placeholder="Search approved customers..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="max-w-sm"
-        aria-label="Search customers"
-      />
+      <Card>
+        <CardContent className="pt-5">
+          <div className="max-w-sm space-y-1.5">
+            <Label htmlFor="matrix-customer-search" className="text-muted-foreground">
+              Search
+            </Label>
+            <Input
+              id="matrix-customer-search"
+              placeholder="Legal name or industry"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label="Search customers"
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       {isLoading && <TableSkeleton rows={6} columns={3} />}
       {isError && <ErrorState onRetry={() => refetch()} />}
@@ -52,7 +63,7 @@ export function SignatoryMatrixCustomerPicker() {
         />
       )}
       {!isLoading && !isError && data && data.data.length > 0 && (
-        <div className="rounded-md border">
+        <Card className="overflow-hidden py-0">
           <Table>
             <TableHeader>
               <TableRow>
@@ -83,7 +94,7 @@ export function SignatoryMatrixCustomerPicker() {
               ))}
             </TableBody>
           </Table>
-        </div>
+        </Card>
       )}
     </div>
   );

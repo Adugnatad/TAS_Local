@@ -17,7 +17,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -47,31 +47,31 @@ export function MatrixPreview({ customerId }: MatrixPreviewProps) {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Matrix Preview</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Enter a hypothetical amount to see which signatory combinations would satisfy the rules.
-        </p>
+      <CardHeader className="border-b">
+        <CardTitle>Matrix preview</CardTitle>
+        <CardDescription>
+          Test an amount against this customer’s signatories and rules before a live request.
+        </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-6 pt-6">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex gap-3">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4 sm:flex-row sm:items-end">
             <FormField
               control={form.control}
               name="amount"
               render={({ field }) => (
                 <FormItem className="flex-1">
-                  <FormLabel className="sr-only">Amount</FormLabel>
+                  <FormLabel>Request amount (PHP)</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="Amount in PHP" {...field} />
+                    <Input type="number" min={1} placeholder="1,000,000" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button type="submit" className="mt-auto">
+            <Button type="submit">
               <Search className="mr-2 h-4 w-4" aria-hidden="true" />
-              Preview
+              Preview combinations
             </Button>
           </form>
         </Form>
@@ -84,8 +84,8 @@ export function MatrixPreview({ customerId }: MatrixPreviewProps) {
         )}
 
         {submitted && data && !isLoading && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
+          <div className="space-y-4 rounded-lg border border-border/80 bg-muted/25 p-4">
+            <div className="flex flex-wrap items-center gap-2">
               <Badge variant={data.canApprove ? "default" : "destructive"}>
                 {data.canApprove ? "Can Approve" : "Cannot Approve"}
               </Badge>
@@ -94,10 +94,12 @@ export function MatrixPreview({ customerId }: MatrixPreviewProps) {
 
             {data.applicableRules.length > 0 && (
               <div>
-                <p className="mb-2 text-sm font-medium">Applicable Rules</p>
-                <ul className="space-y-1 text-sm text-muted-foreground">
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Applicable rules
+                </p>
+                <ul className="space-y-1.5 text-sm text-foreground/90">
                   {data.applicableRules.map((rule) => (
-                    <li key={rule.id}>
+                    <li key={rule.id} className="rounded-md border bg-card px-3 py-2">
                       ≥ {formatCurrency(rule.amountThreshold)}: min {rule.minSignatories} signator
                       {rule.minSignatories > 1 ? "ies" : "y"}
                       {rule.requiredRoles?.length
@@ -111,10 +113,12 @@ export function MatrixPreview({ customerId }: MatrixPreviewProps) {
 
             {data.validCombinations.length > 0 ? (
               <div>
-                <p className="mb-2 text-sm font-medium">Valid Combinations</p>
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Valid combinations
+                </p>
                 <ul className="space-y-2">
                   {data.validCombinations.map((combo, i) => (
-                    <li key={i} className="rounded-md border p-3 text-sm">
+                    <li key={i} className="rounded-md border bg-card px-3 py-2.5 text-sm">
                       {combo.signatories.map((s) => `${s.fullName} (${s.role})`).join(" + ")}
                     </li>
                   ))}

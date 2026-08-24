@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { TableSkeleton } from "@/components/shared/TableSkeleton";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -28,6 +29,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 
 export function RequestListView() {
   const [search, setSearch] = useState("");
@@ -54,54 +56,68 @@ export function RequestListView() {
         description="Read-only view of loan and trade requests across CoopStream and TSS."
       />
 
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <Input
-          placeholder="Search by customer, request ID, or stage..."
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(1);
-          }}
-          className="sm:max-w-xs"
-          aria-label="Search requests"
-        />
-        <Select
-          value={type || "all"}
-          onValueChange={(v) => {
-            if (!v) return;
-            setType(v === "all" ? "" : v);
-            setPage(1);
-          }}
-        >
-          <SelectTrigger className="w-full sm:w-40" aria-label="Filter by type">
-            <SelectValue placeholder="All types" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All types</SelectItem>
-            <SelectItem value="loan">Loan</SelectItem>
-            <SelectItem value="trade">Trade</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select
-          value={status || "all"}
-          onValueChange={(v) => {
-            if (!v) return;
-            setStatus(v === "all" ? "" : v);
-            setPage(1);
-          }}
-        >
-          <SelectTrigger className="w-full sm:w-44" aria-label="Filter by status">
-            <SelectValue placeholder="All statuses" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            <SelectItem value="in_progress">In Progress</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-            <SelectItem value="rejected">Rejected</SelectItem>
-            <SelectItem value="on_hold">On Hold</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <Card>
+        <CardContent className="grid gap-4 pt-5 sm:grid-cols-[1fr_auto_auto] sm:items-end">
+          <div className="space-y-1.5">
+            <Label htmlFor="request-search" className="text-muted-foreground">
+              Search
+            </Label>
+            <Input
+              id="request-search"
+              placeholder="Customer, request ID, or stage"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              className="sm:max-w-xs"
+              aria-label="Search requests"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-muted-foreground">Type</Label>
+            <Select
+              value={type || "all"}
+              onValueChange={(v) => {
+                if (!v) return;
+                setType(v === "all" ? "" : v);
+                setPage(1);
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-40" aria-label="Filter by type">
+                <SelectValue placeholder="All types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All types</SelectItem>
+                <SelectItem value="loan">Loan</SelectItem>
+                <SelectItem value="trade">Trade</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-muted-foreground">Status</Label>
+            <Select
+              value={status || "all"}
+              onValueChange={(v) => {
+                if (!v) return;
+                setStatus(v === "all" ? "" : v);
+                setPage(1);
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-44" aria-label="Filter by status">
+                <SelectValue placeholder="All statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All statuses</SelectItem>
+                <SelectItem value="in_progress">In Progress</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
+                <SelectItem value="on_hold">On Hold</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
 
       {isLoading && <TableSkeleton rows={8} columns={7} />}
       {isError && <ErrorState onRetry={() => refetch()} />}
@@ -110,7 +126,7 @@ export function RequestListView() {
       )}
       {!isLoading && !isError && data && data.data.length > 0 && (
         <>
-          <div className="rounded-md border">
+          <Card className="overflow-hidden py-0">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -153,8 +169,8 @@ export function RequestListView() {
                 ))}
               </TableBody>
             </Table>
-          </div>
-          <div className="flex items-center justify-between">
+          </Card>
+          <div className="flex items-center justify-between rounded-lg border border-border/70 bg-card px-3 py-2.5">
             <p className="text-sm text-muted-foreground">
               Showing {(page - 1) * data.pageSize + 1}–
               {Math.min(page * data.pageSize, data.total)} of {data.total}
