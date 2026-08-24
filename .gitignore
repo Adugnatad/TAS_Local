@@ -19,3 +19,4 @@ playwright-report/
 npm-debug.log*
 .vercel
 *.tsbuildinfo
+internal-portal/.env.example

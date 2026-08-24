@@ -1,16 +1,9 @@
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "/api";
-export const USE_MSW =
-  process.env.NODE_ENV === "development" && process.env.NEXT_PUBLIC_USE_MSW !== "false";
 
 export const OFFICER_ROLES = ["officer", "supervisor", "admin"] as const;
 export type OfficerRole = (typeof OFFICER_ROLES)[number];
 
-export const ONBOARDING_STATUSES = [
-  "draft",
-  "pending_review",
-  "approved",
-  "rejected",
-] as const;
+export const ONBOARDING_STATUSES = ["draft", "pending_review", "approved", "rejected"] as const;
 export type OnboardingStatus = (typeof ONBOARDING_STATUSES)[number];
 
 export const REQUEST_TYPES = ["loan", "trade"] as const;
