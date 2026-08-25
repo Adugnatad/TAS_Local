@@ -11,7 +11,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "TAS Corporate Portal — Internal Web",
   description:
-    "Bank officer-facing module for customer onboarding, signatory matrix, and CRM status viewing.",
+    "Bank officer-facing module for Organization onboarding, signatory matrix, and CRM status viewing.",
 };
 
 export default function RootLayout({

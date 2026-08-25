@@ -26,4 +26,10 @@ describe("login schema shape", () => {
   it("rejects empty credentials", () => {
     expect(loginSchema.safeParse({ username: "", password: "" }).success).toBe(false);
   });
+
+  it("accepts username and password", () => {
+    expect(
+      loginSchema.safeParse({ username: "admin", password: "ChangeMe123!" }).success,
+    ).toBe(true);
+  });
 });
