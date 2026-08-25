@@ -12,8 +12,8 @@ export async function GET(request: Request) {
     .filter(
       (customer) =>
         !search ||
-        [customer.legalName, customer.registrationNumber, customer.industry].some((value) =>
-          value.toLowerCase().includes(search),
+        [customer.name, customer.tin ?? "", customer.phone, customer.crmSystemId ?? ""].some(
+          (value) => value.toLowerCase().includes(search),
         ),
     )
     .filter((customer) => !status || customer.onboardingStatus === status)

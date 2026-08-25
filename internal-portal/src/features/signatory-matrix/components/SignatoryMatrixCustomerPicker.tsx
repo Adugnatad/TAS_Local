@@ -45,7 +45,7 @@ export function SignatoryMatrixCustomerPicker() {
             </Label>
             <Input
               id="matrix-customer-search"
-              placeholder="Legal name or industry"
+              placeholder="Name or phone"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               aria-label="Search customers"
@@ -68,7 +68,7 @@ export function SignatoryMatrixCustomerPicker() {
             <TableHeader>
               <TableRow>
                 <TableHead>Customer</TableHead>
-                <TableHead>Industry</TableHead>
+                <TableHead>Phone</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
@@ -80,10 +80,10 @@ export function SignatoryMatrixCustomerPicker() {
                       href={`/signatory-matrix/${customer.id}`}
                       className="font-medium text-primary hover:underline"
                     >
-                      {customer.legalName}
+                      {customer.name}
                     </Link>
                   </TableCell>
-                  <TableCell>{customer.industry}</TableCell>
+                  <TableCell>{customer.phone}</TableCell>
                   <TableCell>
                     <StatusBadge
                       status={customer.onboardingStatus}

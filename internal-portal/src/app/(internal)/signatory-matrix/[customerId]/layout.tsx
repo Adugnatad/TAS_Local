@@ -18,7 +18,7 @@ export default function CustomerMatrixLayout({ children }: { children: React.Rea
       <Breadcrumbs
         items={[
           { label: "Signatory Matrix", href: "/signatory-matrix" },
-          { label: customer?.legalName ?? customerId },
+          { label: customer?.name ?? customerId },
         ]}
       />
 
@@ -30,10 +30,8 @@ export default function CustomerMatrixLayout({ children }: { children: React.Rea
             <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
               COOP
             </p>
-            <h1 className="text-2xl font-semibold tracking-tight">{customer.legalName}</h1>
-            <p className="mt-1 font-mono text-sm text-muted-foreground">
-              {customer.registrationNumber}
-            </p>
+            <h1 className="text-2xl font-semibold tracking-tight">{customer.name}</h1>
+            <p className="mt-1 font-mono text-sm text-muted-foreground">{customer.phone}</p>
           </div>
           <RouteTabs
             items={[

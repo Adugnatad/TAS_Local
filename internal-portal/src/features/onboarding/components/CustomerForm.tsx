@@ -1,12 +1,20 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useState } from "react";
+import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import type { CustomerProfile } from "../types";
-import { customerProfileSchema, type CustomerProfileFormValues } from "../schemas";
-import { useCreateCustomer, useUpdateCustomer } from "../hooks/useCustomers";
+import type { CustomerProfile as OrganizationProfile, ValidationResult } from "../types";
+import {
+  customerProfileSchema as organizationProfileSchema,
+  type CustomerProfileFormValues as OrganizationProfileFormValues,
+} from "../schemas";
+import { apiClient } from "@/lib/api-client";
+import {
+  useCreateCustomer as useCreateOrganization,
+  useUpdateCustomer as useUpdateOrganization,
+} from "../hooks/useCustomers";
 import { useSession } from "@/features/auth/hooks/useSession";
 import { useCan } from "@/features/settings/hooks/useCan";
 import { Button } from "@/components/ui/button";
@@ -31,11 +39,11 @@ import {
 import { ONBOARDING_STATUS_LABELS } from "@/lib/constants";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 
-interface CustomerFormProps {
-  customer?: CustomerProfile;
+interface OrganizationFormProps {
+  organization?: OrganizationProfile;
 }
 
-function workflowHint(status: CustomerProfile["onboardingStatus"], canAct: boolean) {
+function workflowHint(status: OrganizationProfile["onboardingStatus"], canAct: boolean) {
   if (canAct) return null;
   switch (status) {
     case "draft":
@@ -51,47 +59,62 @@ function workflowHint(status: CustomerProfile["onboardingStatus"], canAct: boole
   }
 }
 
-export function CustomerForm({ customer }: CustomerFormProps) {
+export function OrganizationForm({ organization }: OrganizationFormProps) {
   const router = useRouter();
+  const [tinWarning, setTinWarning] = useState("");
+  const [licenseWarning, setLicenseWarning] = useState("");
+  const [tinValidation, setTinValidation] = useState<"idle" | "valid" | "invalid">("idle");
+  const [licenseValidation, setLicenseValidation] = useState<"idle" | "valid" | "invalid">("idle");
+  const [isValidatingTin, setIsValidatingTin] = useState(false);
+  const [isValidatingLicense, setIsValidatingLicense] = useState(false);
   const { hasRole } = useSession();
   const canApproveOnboarding = useCan("onboarding.approve");
-  const isEdit = !!customer;
-  const createMutation = useCreateCustomer();
-  const updateMutation = useUpdateCustomer(customer?.id ?? "");
+  const isEdit = !!organization;
+  const createMutation = useCreateOrganization();
+  const updateMutation = useUpdateOrganization(organization?.id ?? "");
 
-  const form = useForm<CustomerProfileFormValues>({
-    resolver: zodResolver(customerProfileSchema),
+  const form = useForm<OrganizationProfileFormValues>({
+    resolver: zodResolver(organizationProfileSchema),
     defaultValues: {
-      legalName: customer?.legalName ?? "",
-      registrationNumber: customer?.registrationNumber ?? "",
-      industry: customer?.industry ?? "",
+      name: organization?.name ?? "",
+      address: organization?.address ?? "",
+      phone: organization?.phone ?? "",
+      tin: organization?.tin ?? "",
+      crmSystemId: organization?.crmSystemId ?? "",
+      businessLicense: organization?.businessLicense,
+      accounts: organization?.accounts ?? [{ accountNumber: "", isPrimary: true }],
     },
   });
+  const accountFields = useFieldArray({ control: form.control, name: "accounts" });
 
-  const canEdit = !isEdit || customer.onboardingStatus === "draft" || hasRole("supervisor", "admin");
+  const canEdit =
+    !isEdit || organization.onboardingStatus === "draft" || hasRole("supervisor", "admin");
   const canSubmitForReview =
-    isEdit && customer.onboardingStatus === "draft" && hasRole("officer", "supervisor", "admin");
-  const canApprove = isEdit && customer.onboardingStatus === "pending_review" && canApproveOnboarding;
+    isEdit &&
+    organization.onboardingStatus === "draft" &&
+    hasRole("officer", "supervisor", "admin");
+  const canApprove =
+    isEdit && organization.onboardingStatus === "pending_review" && canApproveOnboarding;
   const canReject = canApprove;
   const hasWorkflowActions = canSubmitForReview || canApprove;
 
-  async function onSubmit(values: CustomerProfileFormValues) {
+  async function onSubmit(values: OrganizationProfileFormValues) {
     try {
       if (isEdit) {
         await updateMutation.mutateAsync(values);
-        toast.success("Customer profile updated.");
+        toast.success("Organization profile updated.");
       } else {
         const created = await createMutation.mutateAsync(values);
-        toast.success("Customer profile created.");
+        toast.success("Organization profile created.");
         router.push(`/onboarding/${created.id}`);
       }
     } catch {
-      toast.error("Failed to save customer profile.");
+      toast.error("Failed to save organization profile.");
     }
   }
 
-  async function updateStatus(status: CustomerProfile["onboardingStatus"]) {
-    if (!customer) return;
+  async function updateStatus(status: OrganizationProfile["onboardingStatus"]) {
+    if (!organization) return;
     try {
       await updateMutation.mutateAsync({ onboardingStatus: status });
       toast.success(`Status updated to ${ONBOARDING_STATUS_LABELS[status]}.`);
@@ -103,29 +126,29 @@ export function CustomerForm({ customer }: CustomerFormProps) {
   const isPending = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <div className="max-w-2xl space-y-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="flex flex-col items-center justify-center w-full space-y-5">
+      {/* <div className="flex flex-wrap items-start self-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">
-            {isEdit ? customer.legalName : "New customer"}
+            {isEdit ? organization.name : "New organization"}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {isEdit
-              ? "Legal identity used for onboarding, signatory matrix, and CRM requests."
-              : "Capture the corporate legal name and registration details to start onboarding."}
+              ? "Organization identity used for onboarding, signatory matrix, and CRM requests."
+              : "Capture the organization details to start onboarding."}
           </p>
         </div>
         {isEdit && (
           <StatusBadge
-            status={customer.onboardingStatus}
-            label={ONBOARDING_STATUS_LABELS[customer.onboardingStatus]}
+            status={organization.onboardingStatus}
+            label={ONBOARDING_STATUS_LABELS[organization.onboardingStatus]}
           />
         )}
-      </div>
+      </div> */}
 
-      <Card>
+      <Card className="w-[80%] p-10">
         <CardHeader className="border-b">
-          <CardTitle>Customer profile</CardTitle>
+          <CardTitle>Organization profile</CardTitle>
           <CardDescription>
             {canEdit
               ? "Fields feed search, signatory setup, and request matching."
@@ -137,12 +160,16 @@ export function CustomerForm({ customer }: CustomerFormProps) {
             <CardContent className="grid gap-4 pt-5 sm:grid-cols-2">
               <FormField
                 control={form.control}
-                name="legalName"
+                name="name"
                 render={({ field }) => (
                   <FormItem className="sm:col-span-2">
-                    <FormLabel>Legal name</FormLabel>
+                    <FormLabel>Name</FormLabel>
                     <FormControl>
-                      <Input {...field} disabled={!canEdit || isPending} autoComplete="organization" />
+                      <Input
+                        {...field}
+                        disabled={!canEdit || isPending}
+                        autoComplete="organization"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -150,10 +177,10 @@ export function CustomerForm({ customer }: CustomerFormProps) {
               />
               <FormField
                 control={form.control}
-                name="registrationNumber"
+                name="address"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Registration number</FormLabel>
+                    <FormLabel>Address</FormLabel>
                     <FormControl>
                       <Input {...field} disabled={!canEdit || isPending} />
                     </FormControl>
@@ -163,22 +190,249 @@ export function CustomerForm({ customer }: CustomerFormProps) {
               />
               <FormField
                 control={form.control}
-                name="industry"
+                name="phone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Industry</FormLabel>
+                    <FormLabel>Phone</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="e.g. Manufacturing"
+                        placeholder="e.g. +63 917 555 0100"
                         {...field}
                         disabled={!canEdit || isPending}
                       />
                     </FormControl>
-                    <FormDescription>Used in customer search and reporting.</FormDescription>
+                    <FormDescription>Used for organization contact.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+              <FormField
+                control={form.control}
+                name="tin"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      TIN <span className="font-normal text-muted-foreground">(optional)</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        inputMode="numeric"
+                        maxLength={10}
+                        disabled={!canEdit || isPending}
+                        onChange={(event) => {
+                          const value = event.target.value;
+                          field.onChange(value);
+                          setTinValidation("idle");
+                          setTinWarning(value && !/^\d+$/.test(value) ? "Use digits only." : "");
+                        }}
+                      />
+                    </FormControl>
+                    {/^\d{10}$/.test(field.value ?? "") && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-fit"
+                        disabled={!canEdit || isPending || isValidatingTin}
+                        onClick={async () => {
+                          setIsValidatingTin(true);
+                          try {
+                            const result = await apiClient<ValidationResult>(
+                              "/customers/validate-tin",
+                              {
+                                method: "POST",
+                                body: { tin: field.value },
+                              },
+                            );
+                            setTinValidation(result.valid ? "valid" : "invalid");
+                            setTinWarning(
+                              result.valid ? "" : (result.message ?? "TIN could not be validated."),
+                            );
+                          } catch (error) {
+                            setTinValidation("invalid");
+                            setTinWarning(
+                              error instanceof Error ? error.message : "TIN validation failed.",
+                            );
+                          } finally {
+                            setIsValidatingTin(false);
+                          }
+                        }}
+                      >
+                        {isValidatingTin ? "Validating..." : "Validate TIN"}
+                      </Button>
+                    )}
+                    {tinValidation === "valid" && (
+                      <FormDescription className="text-green-700">TIN is valid.</FormDescription>
+                    )}
+                    {tinWarning && (
+                      <FormDescription className="text-amber-700">{tinWarning}</FormDescription>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="crmSystemId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      CRM system ID{" "}
+                      <span className="font-normal text-muted-foreground">(optional)</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Input {...field} disabled={!canEdit || isPending} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="businessLicense"
+                render={({ field }) => (
+                  <FormItem className="sm:col-span-2">
+                    <FormLabel>
+                      Business license{" "}
+                      <span className="font-normal text-muted-foreground">(optional)</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        disabled={!canEdit || isPending}
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          if (!file) {
+                            field.onChange(undefined);
+                            setLicenseWarning("");
+                            return;
+                          }
+                          field.onChange({ name: file.name, size: file.size, type: file.type });
+                          setLicenseValidation("idle");
+                          setLicenseWarning("");
+                        }}
+                      />
+                    </FormControl>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-fit"
+                      disabled={!canEdit || isPending || isValidatingLicense || !field.value}
+                      onClick={async () => {
+                        if (!field.value) return;
+                        setIsValidatingLicense(true);
+                        try {
+                          const result = await apiClient<ValidationResult>(
+                            "/customers/validate-business-license",
+                            { method: "POST", body: { businessLicense: field.value } },
+                          );
+                          setLicenseValidation(result.valid ? "valid" : "invalid");
+                          setLicenseWarning(
+                            result.valid
+                              ? ""
+                              : (result.message ?? "Business license could not be validated."),
+                          );
+                        } catch (error) {
+                          setLicenseValidation("invalid");
+                          setLicenseWarning(
+                            error instanceof Error
+                              ? error.message
+                              : "Business license validation failed.",
+                          );
+                        } finally {
+                          setIsValidatingLicense(false);
+                        }
+                      }}
+                    >
+                      {isValidatingLicense ? "Validating..." : "Validate business license"}
+                    </Button>
+                    {licenseValidation === "valid" && (
+                      <FormDescription className="text-green-700">
+                        Business license file is valid.
+                      </FormDescription>
+                    )}
+                    {licenseValidation === "invalid" && (
+                      <FormDescription className="text-amber-700">
+                        Use a PDF, JPG, or PNG file up to 10 MB. You can continue.
+                      </FormDescription>
+                    )}
+                    {field.value && <FormDescription>{field.value.name}</FormDescription>}
+                    {licenseWarning && (
+                      <FormDescription className="text-amber-700">
+                        {licenseWarning} You can continue.
+                      </FormDescription>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="space-y-3 sm:col-span-2">
+                <div>
+                  <FormLabel>Accounts</FormLabel>
+                  <FormDescription>
+                    Add one or more accounts and mark exactly one as primary.
+                  </FormDescription>
+                </div>
+                {accountFields.fields.map((account, index) => (
+                  <div key={account.id} className="flex items-end gap-2">
+                    <FormField
+                      control={form.control}
+                      name={`accounts.${index}.accountNumber`}
+                      render={({ field }) => (
+                        <FormItem className="min-w-0 flex-1">
+                          <FormLabel className="sr-only">Account {index + 1}</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder="Account number"
+                              disabled={!canEdit || isPending}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button
+                      type="button"
+                      variant={form.watch(`accounts.${index}.isPrimary`) ? "secondary" : "outline"}
+                      disabled={!canEdit || isPending}
+                      onClick={() =>
+                        form.setValue(
+                          "accounts",
+                          form.getValues("accounts").map((item, itemIndex) => ({
+                            ...item,
+                            isPrimary: itemIndex === index,
+                          })),
+                        )
+                      }
+                    >
+                      Primary
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={!canEdit || isPending || accountFields.fields.length === 1}
+                      onClick={() => accountFields.remove(index)}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!canEdit || isPending}
+                  onClick={() => accountFields.append({ accountNumber: "", isPrimary: false })}
+                >
+                  Add account
+                </Button>
+                {form.formState.errors.accounts?.root?.message && (
+                  <p className="text-sm text-destructive">
+                    {form.formState.errors.accounts.root.message}
+                  </p>
+                )}
+              </div>
             </CardContent>
             {canEdit && (
               <CardFooter className="justify-end gap-2">
@@ -191,7 +445,7 @@ export function CustomerForm({ customer }: CustomerFormProps) {
                   Cancel
                 </Button>
                 <Button type="submit" disabled={isPending}>
-                  {isEdit ? "Save changes" : "Create customer"}
+                  {isEdit ? "Save changes" : "Create organization"}
                 </Button>
               </CardFooter>
             )}
@@ -236,7 +490,7 @@ export function CustomerForm({ customer }: CustomerFormProps) {
               </div>
             ) : (
               <p className="text-sm leading-relaxed text-muted-foreground">
-                {workflowHint(customer.onboardingStatus, false)}
+                {workflowHint(organization.onboardingStatus, false)}
               </p>
             )}
           </CardContent>

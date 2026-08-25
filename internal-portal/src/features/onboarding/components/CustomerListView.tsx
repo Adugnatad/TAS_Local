@@ -48,12 +48,12 @@ export function CustomerListView() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Customer Onboarding"
+        title="Organization Onboarding"
         description="Manage corporate customer profiles and onboarding status."
         actions={
           <Link href="/onboarding/new" className={cn(buttonVariants())}>
             <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
-            New Customer
+            New Organization
           </Link>
         }
       />
@@ -66,7 +66,7 @@ export function CustomerListView() {
             </Label>
             <Input
               id="customer-search"
-              placeholder="Name, registration, or industry"
+              placeholder="Name, TIN, phone, or CRM ID"
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
@@ -105,11 +105,11 @@ export function CustomerListView() {
       {isError && <ErrorState onRetry={() => refetch()} />}
       {!isLoading && !isError && data?.data.length === 0 && (
         <EmptyState
-          title="No customers found"
-          description="Create a new customer profile to get started."
+          title="No organizations found"
+          description="Create a new organization profile to get started."
           action={
             <Link href="/onboarding/new" className={cn(buttonVariants())}>
-              New Customer
+              New Organization
             </Link>
           }
         />
@@ -120,9 +120,9 @@ export function CustomerListView() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Legal Name</TableHead>
-                  <TableHead>Registration No.</TableHead>
-                  <TableHead>Industry</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Primary Account</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Last Updated</TableHead>
                 </TableRow>
@@ -135,11 +135,13 @@ export function CustomerListView() {
                         href={`/onboarding/${customer.id}`}
                         className="font-medium text-primary hover:underline"
                       >
-                        {customer.legalName}
+                        {customer.name}
                       </Link>
                     </TableCell>
-                    <TableCell>{customer.registrationNumber}</TableCell>
-                    <TableCell>{customer.industry}</TableCell>
+                    <TableCell>{customer.phone}</TableCell>
+                    <TableCell>
+                      {customer.accounts.find((account) => account.isPrimary)?.accountNumber ?? "-"}
+                    </TableCell>
                     <TableCell>
                       <StatusBadge
                         status={customer.onboardingStatus}
@@ -154,8 +156,8 @@ export function CustomerListView() {
           </Card>
           <div className="flex items-center justify-between rounded-lg border border-border/70 bg-card px-3 py-2.5">
             <p className="text-sm text-muted-foreground">
-              Showing {(page - 1) * data.pageSize + 1}–
-              {Math.min(page * data.pageSize, data.total)} of {data.total}
+              Showing {(page - 1) * data.pageSize + 1}–{Math.min(page * data.pageSize, data.total)}{" "}
+              of {data.total}
             </p>
             <div className="flex gap-2">
               <Button

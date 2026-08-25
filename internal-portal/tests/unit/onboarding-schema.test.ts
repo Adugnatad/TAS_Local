@@ -4,19 +4,32 @@ import { customerProfileSchema } from "@/features/onboarding/schemas";
 describe("customerProfileSchema", () => {
   it("validates a correct customer profile", () => {
     const result = customerProfileSchema.safeParse({
-      legalName: "Acme Corp",
-      registrationNumber: "REG-2024-1001",
-      industry: "Manufacturing",
+      name: "Acme Corp",
+      address: "1 Corporate Avenue",
+      phone: "+63 917 555 0100",
+      accounts: [{ accountNumber: "001-123", isPrimary: true }],
     });
     expect(result.success).toBe(true);
   });
 
-  it("rejects invalid registration number", () => {
+  it("requires exactly one primary account", () => {
     const result = customerProfileSchema.safeParse({
-      legalName: "Acme Corp",
-      registrationNumber: "invalid reg!",
-      industry: "Manufacturing",
+      name: "Acme Corp",
+      address: "1 Corporate Avenue",
+      phone: "+63 917 555 0100",
+      accounts: [{ accountNumber: "001-123", isPrimary: false }],
     });
     expect(result.success).toBe(false);
+  });
+
+  it("does not block an invalid optional TIN", () => {
+    const result = customerProfileSchema.safeParse({
+      name: "Acme Corp",
+      address: "1 Corporate Avenue",
+      phone: "+63 917 555 0100",
+      tin: "not-yet-available",
+      accounts: [{ accountNumber: "001-123", isPrimary: true }],
+    });
+    expect(result.success).toBe(true);
   });
 });

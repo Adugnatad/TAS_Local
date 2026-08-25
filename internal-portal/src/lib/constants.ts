@@ -92,10 +92,9 @@ export const NAV_ITEMS: Array<{
   label: string;
   roles: readonly OfficerRole[];
 }> = [
-  { href: "/onboarding", label: "Customer Onboarding", roles: OFFICER_ROLES },
+  { href: "/onboarding", label: "Organization Onboarding", roles: OFFICER_ROLES },
   { href: "/signatory-matrix", label: "Signatory Matrix", roles: OFFICER_ROLES },
   { href: "/status", label: "Status Viewer", roles: OFFICER_ROLES },
   { href: "/users", label: "Users", roles: ["admin"] },
   { href: "/settings", label: "Settings", roles: ["supervisor", "admin"] },
-  { href: "/profile", label: "Profile", roles: OFFICER_ROLES },
 ];

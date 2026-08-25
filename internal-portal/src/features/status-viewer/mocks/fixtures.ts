@@ -11,11 +11,7 @@ function daysAgo(days: number): string {
   return date.toISOString();
 }
 
-function getStageForStatus(
-  type: RequestType,
-  status: RequestStatus,
-  index: number,
-): RequestStage {
+function getStageForStatus(type: RequestType, status: RequestStatus, index: number): RequestStage {
   const stages = type === "loan" ? LOAN_STAGES : TRADE_STAGES;
   if (status === "completed") return "Completed";
   if (status === "rejected") return stages[Math.min(2, stages.length - 2)];
@@ -32,7 +28,7 @@ export const requestsFixture: RequestStatusSummary[] = Array.from({ length: 24 }
   return {
     id: `req-${String(i + 1).padStart(3, "0")}`,
     customerId: customer.id,
-    customerName: customer.legalName,
+    customerName: customer.name,
     type,
     currentStage: getStageForStatus(type, status, i),
     status,
@@ -50,9 +46,7 @@ export function getRequestDetail(id: string): RequestStatusDetail | undefined {
     name,
     isCurrent: name === summary.currentStage,
     completedAt:
-      name === summary.currentStage || summary.status === "completed"
-        ? undefined
-        : daysAgo(5),
+      name === summary.currentStage || summary.status === "completed" ? undefined : daysAgo(5),
   }));
 
   const currentIndex = stages.findIndex((s) => s.isCurrent);
