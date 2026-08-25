@@ -103,6 +103,20 @@ export async function createRule(
   return apiClient(`${base(orgId)}/approval-rules`, { method: "POST", body: input });
 }
 
+export async function updateRule(
+  orgId: string,
+  ruleId: string,
+  input: {
+    approvalType: string;
+    approvalAction: string;
+    minAmount: number;
+    maxAmount: number;
+    signatoryGroupId: string;
+  },
+): Promise<ApprovalRule> {
+  return apiClient(`${base(orgId)}/approval-rules/${ruleId}`, { method: "PUT", body: input });
+}
+
 export async function setRuleActive(
   orgId: string,
   ruleId: string,

@@ -24,6 +24,11 @@ export interface OrganizationSummary {
   tinEnteredName?: string | null;
   tinRegisteredName?: string | null;
   tinNameMatchPercent?: number | null;
+  crmSystemId?: string | null;
+  cbsCustomerId?: string | null;
+  effectiveDate?: string | null;
+  expiryDate?: string | null;
+  activeUsers?: number;
   accounts: number;
   createdAt: string;
 }

@@ -4,7 +4,7 @@ import * as api from "./api";
 export const matrixKeys = {
   groups: (orgId: string) => ["signatory", orgId, "groups"] as const,
   members: (orgId: string, groupId: string) => ["signatory", orgId, "members", groupId] as const,
-  rules: (orgId: string) => ["signatory", orgId, "rules"] as const,
+  rules: (orgId: string, params?: unknown) => ["signatory", orgId, "rules", params ?? {}] as const,
 };
 
 export function useSignatoryGroups(orgId: string) {
@@ -23,10 +23,13 @@ export function useSignatoryMembers(orgId: string, groupId: string) {
   });
 }
 
-export function useApprovalRules(orgId: string) {
+export function useApprovalRules(
+  orgId: string,
+  params?: { type?: string; groupId?: string },
+) {
   return useQuery({
-    queryKey: matrixKeys.rules(orgId),
-    queryFn: () => api.fetchRules(orgId),
+    queryKey: matrixKeys.rules(orgId, params),
+    queryFn: () => api.fetchRules(orgId, params),
     enabled: Boolean(orgId),
   });
 }
@@ -72,6 +75,15 @@ export function useMatrixMutations(orgId: string) {
     }),
     createRule: useMutation({
       mutationFn: (input: Parameters<typeof api.createRule>[1]) => api.createRule(orgId, input),
+      onSuccess: invalidate,
+    }),
+    updateRule: useMutation({
+      mutationFn: ({
+        ruleId,
+        ...input
+      }: {
+        ruleId: string;
+      } & Parameters<typeof api.updateRule>[2]) => api.updateRule(orgId, ruleId, input),
       onSuccess: invalidate,
     }),
     setRuleActive: useMutation({

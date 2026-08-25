@@ -10,6 +10,7 @@ import { useCreateOrganization, useUpdateOrganization } from "../hooks";
 import type { OrganizationDetail, OrganizationWritePayload } from "../types";
 import { formatOrgApiError } from "../tin";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -54,7 +55,13 @@ function toPayload(values: OrgFormValues, includeAccount: boolean): Organization
   return payload;
 }
 
-export function OrganizationForm({ organization }: { organization?: OrganizationDetail }) {
+export function OrganizationForm({
+  organization,
+  embedded = false,
+}: {
+  organization?: OrganizationDetail;
+  embedded?: boolean;
+}) {
   const router = useRouter();
   const isEdit = Boolean(organization);
   const create = useCreateOrganization();
@@ -99,14 +106,25 @@ export function OrganizationForm({ organization }: { organization?: Organization
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title={isEdit ? "Edit organization" : "Register organization"}
-        description="Registration never blocks on TIN lookup. Name, TIN, and phone must be unique."
-      />
-      <Card className="max-w-3xl">
-        <CardHeader>
-          <CardTitle>Company details</CardTitle>
-        </CardHeader>
+      {!embedded && (
+        <PageHeader
+          title={isEdit ? "Edit organization" : "Register organization"}
+          description="Registration never blocks on TIN lookup. Name, TIN, and phone must be unique."
+        />
+      )}
+      {embedded && (
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">
+            Edit contract{organization ? `: ${organization.name}` : ""}
+          </h2>
+        </div>
+      )}
+      <Card className={cn(embedded ? "border-0 shadow-none" : "max-w-3xl")}>
+        {!embedded && (
+          <CardHeader>
+            <CardTitle>Company details</CardTitle>
+          </CardHeader>
+        )}
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <CardContent className="grid gap-4 sm:grid-cols-2">

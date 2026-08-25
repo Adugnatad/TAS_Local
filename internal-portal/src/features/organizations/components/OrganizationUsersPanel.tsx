@@ -1,16 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useForm, type Control } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import {
-  orgUserSchema,
-  orgUserUpdateSchema,
-  type OrgUserFormValues,
-  type OrgUserUpdateFormValues,
-} from "../schemas";
-import { useCreateOrgUser, useOrgUserMutations, useOrgUsers } from "../hooks";
+import { orgUserUpdateSchema, type OrgUserUpdateFormValues } from "../schemas";
+import { useOrgUserMutations, useOrgUsers } from "../hooks";
 import { formatOrgApiError } from "../tin";
 import type { OrganizationUser } from "../types";
 import { useSession } from "@/features/auth/hooks/useSession";
@@ -18,14 +14,14 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { TableSkeleton } from "@/components/shared/TableSkeleton";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -110,16 +106,9 @@ export function OrganizationUsersPanel({ orgId }: { orgId: string }) {
   const { can } = useSession();
   const canManage = can("MANAGE_ORGANIZATIONS");
   const [page, setPage] = useState(0);
-  const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<OrganizationUser | null>(null);
   const query = useOrgUsers(orgId, { page, size: 20 });
-  const create = useCreateOrgUser(orgId);
   const mutations = useOrgUserMutations(orgId);
-
-  const form = useForm<OrgUserFormValues>({
-    resolver: zodResolver(orgUserSchema),
-    defaultValues: { role: "User", permissionType: "VIEW", username: "", password: "" },
-  });
 
   const editForm = useForm<OrgUserUpdateFormValues>({
     resolver: zodResolver(orgUserUpdateSchema),
@@ -132,20 +121,6 @@ export function OrganizationUsersPanel({ orgId }: { orgId: string }) {
       permissionType: (editing?.permissionType as "INITIATE" | "APPROVE" | "VIEW") || "VIEW",
     },
   });
-
-  async function onSubmit(values: OrgUserFormValues) {
-    try {
-      await create.mutateAsync({
-        ...values,
-        email: values.email || undefined,
-      });
-      toast.success("User created.");
-      setOpen(false);
-      form.reset({ role: "User", permissionType: "VIEW", username: "", password: "" });
-    } catch (error) {
-      toast.error(formatOrgApiError(error, "Create failed."));
-    }
-  }
 
   async function onEdit(values: OrgUserUpdateFormValues) {
     if (!editing) return;
@@ -168,89 +143,9 @@ export function OrganizationUsersPanel({ orgId }: { orgId: string }) {
     <div className="space-y-4">
       <div className="flex justify-end">
         {canManage && (
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger render={<Button>Add user</Button>} />
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add organization user</DialogTitle>
-              </DialogHeader>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-3">
-                  <FormField
-                    control={form.control}
-                    name="username"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Username</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <FormControl>
-                          <Input type="password" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="firstName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>First name</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="lastName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Last name</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <RolePermissionFields
-                    control={form.control as unknown as Control<RolePermissionValues>}
-                  />
-                  <Button type="submit" disabled={create.isPending}>
-                    Create
-                  </Button>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
+          <Link href={`/organizations/${orgId}/users/new`} className={cn(buttonVariants())}>
+            Add user
+          </Link>
         )}
       </div>
 
