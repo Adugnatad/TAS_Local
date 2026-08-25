@@ -1,22 +1,29 @@
 import { describe, expect, it } from "vitest";
-import { customerProfileSchema } from "@/features/onboarding/schemas";
+import { z } from "zod";
+import { orgFormSchema } from "@/features/organizations/schemas";
 
-describe("customerProfileSchema", () => {
-  it("validates a correct customer profile", () => {
-    const result = customerProfileSchema.safeParse({
-      legalName: "Acme Corp",
-      registrationNumber: "REG-2024-1001",
-      industry: "Manufacturing",
+describe("orgFormSchema", () => {
+  it("requires a name", () => {
+    const result = orgFormSchema.safeParse({ name: "" });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts a valid organization payload", () => {
+    const result = orgFormSchema.safeParse({
+      name: "Acme Trading PLC",
+      tin: "1234567890",
     });
     expect(result.success).toBe(true);
   });
+});
 
-  it("rejects invalid registration number", () => {
-    const result = customerProfileSchema.safeParse({
-      legalName: "Acme Corp",
-      registrationNumber: "invalid reg!",
-      industry: "Manufacturing",
-    });
-    expect(result.success).toBe(false);
+describe("login schema shape", () => {
+  const loginSchema = z.object({
+    username: z.string().min(1),
+    password: z.string().min(1),
+  });
+
+  it("rejects empty credentials", () => {
+    expect(loginSchema.safeParse({ username: "", password: "" }).success).toBe(false);
   });
 });

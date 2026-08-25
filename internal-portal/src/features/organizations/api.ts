@@ -1,0 +1,188 @@
+import { apiClient, apiDownload } from "@/lib/api-client";
+import type { ApiListParams, PageResponse } from "@/types/global";
+import type { OrgStatus } from "@/lib/constants";
+import type {
+  CreateOrgUserInput,
+  OrgAccount,
+  OrgAccountInput,
+  OrgDocument,
+  OrganizationDetail,
+  OrganizationSummary,
+  OrganizationUser,
+  OrganizationWritePayload,
+  UpdateOrgUserInput,
+} from "./types";
+
+export async function fetchOrganizations(
+  params: ApiListParams & { status?: OrgStatus | "" },
+): Promise<PageResponse<OrganizationSummary>> {
+  return apiClient("/organizations", { params });
+}
+
+export async function fetchOrganization(id: string): Promise<OrganizationDetail> {
+  return apiClient(`/organizations/${id}`);
+}
+
+export async function createOrganization(
+  payload: OrganizationWritePayload,
+  businessLicense?: File | null,
+): Promise<OrganizationDetail> {
+  const form = new FormData();
+  form.append(
+    "data",
+    new Blob([JSON.stringify(payload)], { type: "application/json" }),
+  );
+  if (businessLicense) {
+    form.append("businessLicense", businessLicense);
+  }
+  return apiClient("/organizations", { method: "POST", body: form });
+}
+
+export async function updateOrganization(
+  id: string,
+  payload: OrganizationWritePayload,
+): Promise<OrganizationDetail> {
+  return apiClient(`/organizations/${id}`, { method: "PUT", body: payload });
+}
+
+export async function suspendOrganization(id: string): Promise<OrganizationDetail> {
+  return apiClient(`/organizations/${id}/suspend`, { method: "POST" });
+}
+
+export async function activateOrganization(id: string): Promise<OrganizationDetail> {
+  return apiClient(`/organizations/${id}/activate`, { method: "POST" });
+}
+
+export async function terminateOrganization(id: string): Promise<OrganizationDetail> {
+  return apiClient(`/organizations/${id}/terminate`, { method: "POST" });
+}
+
+export async function deleteOrganization(id: string): Promise<void> {
+  return apiClient(`/organizations/${id}`, { method: "DELETE" });
+}
+
+export async function revalidateOrganization(id: string): Promise<OrganizationDetail> {
+  return apiClient(`/organizations/${id}/revalidate`, { method: "POST" });
+}
+
+export async function verifyTin(id: string): Promise<OrganizationDetail> {
+  return apiClient(`/organizations/${id}/verify-tin`, { method: "POST" });
+}
+
+export async function verifyManual(id: string, note: string): Promise<OrganizationDetail> {
+  return apiClient(`/organizations/${id}/verify-manual`, { method: "POST", body: { note } });
+}
+
+export async function fetchOrgUsers(
+  orgId: string,
+  params: ApiListParams,
+): Promise<PageResponse<OrganizationUser>> {
+  return apiClient(`/organizations/${orgId}/users`, { params });
+}
+
+export async function createOrgUser(
+  orgId: string,
+  input: CreateOrgUserInput,
+): Promise<OrganizationUser> {
+  return apiClient(`/organizations/${orgId}/users`, { method: "POST", body: input });
+}
+
+export async function updateOrgUser(
+  orgId: string,
+  userId: string,
+  input: UpdateOrgUserInput,
+): Promise<OrganizationUser> {
+  return apiClient(`/organizations/${orgId}/users/${userId}`, { method: "PUT", body: input });
+}
+
+export async function setOrgUserActive(
+  orgId: string,
+  userId: string,
+  active: boolean,
+): Promise<OrganizationUser> {
+  return apiClient(
+    `/organizations/${orgId}/users/${userId}/${active ? "activate" : "deactivate"}`,
+    { method: "POST" },
+  );
+}
+
+export async function resetOrgUserPassword(
+  orgId: string,
+  userId: string,
+  newPassword: string,
+): Promise<void> {
+  return apiClient(`/organizations/${orgId}/users/${userId}/reset-password`, {
+    method: "POST",
+    body: { newPassword },
+  });
+}
+
+export async function fetchOrgAccounts(orgId: string): Promise<OrgAccount[]> {
+  const data = await apiClient<OrgAccount[] | { content: OrgAccount[] }>(
+    `/organizations/${orgId}/accounts`,
+  );
+  return Array.isArray(data) ? data : data.content;
+}
+
+export async function createOrgAccount(
+  orgId: string,
+  input: OrgAccountInput,
+): Promise<OrgAccount> {
+  return apiClient(`/organizations/${orgId}/accounts`, { method: "POST", body: input });
+}
+
+export async function updateOrgAccount(
+  orgId: string,
+  accountId: string,
+  input: OrgAccountInput,
+): Promise<OrgAccount> {
+  return apiClient(`/organizations/${orgId}/accounts/${accountId}`, {
+    method: "PUT",
+    body: input,
+  });
+}
+
+export async function setPrimaryOrgAccount(orgId: string, accountId: string): Promise<OrgAccount> {
+  return apiClient(`/organizations/${orgId}/accounts/${accountId}/set-primary`, { method: "POST" });
+}
+
+export async function deleteOrgAccount(orgId: string, accountId: string): Promise<void> {
+  return apiClient(`/organizations/${orgId}/accounts/${accountId}`, { method: "DELETE" });
+}
+
+export async function fetchOrgDocuments(orgId: string): Promise<OrgDocument[]> {
+  const data = await apiClient<OrgDocument[] | { content: OrgDocument[] }>(
+    `/organizations/${orgId}/documents`,
+  );
+  return Array.isArray(data) ? data : data.content;
+}
+
+export async function uploadOrgDocument(
+  orgId: string,
+  file: File,
+  type = "BUSINESS_LICENSE",
+): Promise<OrganizationDetail | unknown> {
+  const form = new FormData();
+  form.append("file", file);
+  return apiClient(`/organizations/${orgId}/documents`, {
+    method: "POST",
+    body: form,
+    params: { type },
+  });
+}
+
+export async function downloadOrgDocument(orgId: string, documentId: string): Promise<void> {
+  const { blob, filename } = await apiDownload(
+    `/organizations/${orgId}/documents/${documentId}`,
+  );
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename ?? "document";
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function deleteOrgDocument(orgId: string, documentId: string): Promise<void> {
+  return apiClient(`/organizations/${orgId}/documents/${documentId}`, { method: "DELETE" });
+}

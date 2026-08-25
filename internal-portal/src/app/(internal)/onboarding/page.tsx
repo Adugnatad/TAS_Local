@@ -1,5 +1,5 @@
-import { CustomerListView } from "@/features/onboarding/components/CustomerListView";
+import { redirect } from "next/navigation";
 
-export default function OnboardingPage() {
-  return <CustomerListView />;
+export default function OnboardingRedirect() {
+  redirect("/organizations");
 }

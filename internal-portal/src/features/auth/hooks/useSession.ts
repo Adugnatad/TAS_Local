@@ -1,3 +1,4 @@
+import { hasAnyPermission, hasPermission } from "@/lib/permissions";
 import { useSessionStore } from "../store/sessionStore";
 
 export function useSession() {
@@ -5,19 +6,20 @@ export function useSession() {
   const isAuthenticated = useSessionStore((state) => state.isAuthenticated);
   const hasHydrated = useSessionStore((state) => state.hasHydrated);
   const setSession = useSessionStore((state) => state.setSession);
+  const updateUser = useSessionStore((state) => state.updateUser);
   const clearSession = useSessionStore((state) => state.clearSession);
 
-  const hasRole = (...roles: Array<NonNullable<typeof user>["role"]>) => {
-    if (!user) return false;
-    return roles.includes(user.role);
-  };
+  const can = (code: string) => hasPermission(user?.permissions, code);
+  const canAny = (...codes: string[]) => hasAnyPermission(user?.permissions, codes);
 
   return {
     user,
     isAuthenticated,
     hasHydrated,
     setSession,
+    updateUser,
     clearSession,
-    hasRole,
+    can,
+    canAny,
   };
 }

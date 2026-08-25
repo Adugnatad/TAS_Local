@@ -1,40 +1,27 @@
-import type { OfficerRole } from "@/lib/constants";
-
 export interface SessionUser {
   id: string;
-  name: string;
-  email: string;
-  role: OfficerRole;
-  phone?: string;
-  department?: string;
-}
-
-export interface Officer extends SessionUser {
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-  lastLoginAt?: string;
+  username: string;
+  email: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  userType: "EMPLOYEE" | "ORGANIZATION" | string;
+  roles: string[];
+  permissions: string[];
+  organizationId: string | null;
+  permissionType: string | null;
 }
 
 export interface LoginInput {
-  role: OfficerRole;
-  name?: string;
+  username: string;
+  password: string;
 }
 
-export interface UpdateProfileInput {
-  name: string;
-  email: string;
-  phone?: string;
-  department?: string;
+export interface ChangePasswordInput {
+  currentPassword: string;
+  newPassword: string;
 }
 
-export interface CreateOfficerInput {
-  name: string;
-  email: string;
-  role: OfficerRole;
-  phone?: string;
-  department?: string;
-  isActive?: boolean;
+export function displayName(user: Pick<SessionUser, "firstName" | "lastName" | "username">): string {
+  const name = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
+  return name || user.username;
 }
-
-export type UpdateOfficerInput = Partial<CreateOfficerInput>;

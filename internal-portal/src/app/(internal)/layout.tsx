@@ -3,9 +3,8 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/features/auth/hooks/useSession";
-import { RBACGuard } from "@/components/layout/RBACGuard";
+import { PermissionGuard } from "@/components/layout/RBACGuard";
 import { Sidebar, Topbar } from "@/components/layout/Sidebar";
-import { OFFICER_ROLES } from "@/lib/constants";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function InternalLayout({ children }: { children: React.ReactNode }) {
@@ -31,7 +30,7 @@ export default function InternalLayout({ children }: { children: React.ReactNode
   }
 
   return (
-    <RBACGuard allowedRoles={[...OFFICER_ROLES]} redirectTo="/login">
+    <PermissionGuard redirectTo="/login">
       <div className="flex min-h-screen bg-background">
         <Sidebar />
         <div className="flex min-w-0 flex-1 flex-col">
@@ -39,6 +38,6 @@ export default function InternalLayout({ children }: { children: React.ReactNode
           <main className="flex-1 overflow-auto p-4 md:p-7 lg:p-8">{children}</main>
         </div>
       </div>
-    </RBACGuard>
+    </PermissionGuard>
   );
 }

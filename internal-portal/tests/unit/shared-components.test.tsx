@@ -12,15 +12,17 @@ function wrapper({ children }: { children: React.ReactNode }) {
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 }
 
+void wrapper;
+
 describe("StatusBadge", () => {
-  it("renders onboarding status label", () => {
-    render(<StatusBadge status="pending_review" label="Pending Review" />);
-    expect(screen.getByText("Pending Review")).toBeInTheDocument();
+  it("renders organization status label", () => {
+    render(<StatusBadge status="ACTIVE" />);
+    expect(screen.getByText("ACTIVE")).toBeInTheDocument();
   });
 
-  it("renders request status label", () => {
-    render(<StatusBadge status="in_progress" label="In Progress" />);
-    expect(screen.getByText("In Progress")).toBeInTheDocument();
+  it("renders validation status", () => {
+    render(<StatusBadge status="VALIDATED" />);
+    expect(screen.getByText("VALIDATED")).toBeInTheDocument();
   });
 });
 

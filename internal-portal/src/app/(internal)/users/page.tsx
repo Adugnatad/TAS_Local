@@ -1,12 +1,5 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { RBACGuard } from "@/components/layout/RBACGuard";
-import { UserManagement } from "@/features/settings/components/UserManagement";
-
-export default function UsersPage() {
-  return (
-    <RBACGuard allowedRoles={["admin"]}>
-      <UserManagement />
-    </RBACGuard>
-  );
+export default function UsersRedirect() {
+  redirect("/employees");
 }

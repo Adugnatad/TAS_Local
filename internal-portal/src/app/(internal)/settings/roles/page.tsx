@@ -1,12 +1,5 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { RBACGuard } from "@/components/layout/RBACGuard";
-import { RolePermissionsMatrix } from "@/features/settings/components/RolePermissionsMatrix";
-
-export default function RolesSettingsPage() {
-  return (
-    <RBACGuard allowedRoles={["admin"]}>
-      <RolePermissionsMatrix />
-    </RBACGuard>
-  );
+export default function SettingsRolesRedirect() {
+  redirect("/roles");
 }

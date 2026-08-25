@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function UsersSettingsPage() {
-  redirect("/users");
+export default function SettingsUsersRedirect() {
+  redirect("/employees");
 }

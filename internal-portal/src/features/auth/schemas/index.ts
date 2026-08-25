@@ -1,20 +1,20 @@
 import { z } from "zod";
 
-export const profileSchema = z.object({
-  name: z.string().min(2, "Name is required"),
-  email: z.string().email("Valid email is required"),
-  phone: z.string().optional(),
-  department: z.string().optional(),
+export const loginSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  password: z.string().min(1, "Password is required"),
 });
 
-export const officerSchema = z.object({
-  name: z.string().min(2, "Name is required"),
-  email: z.string().email("Valid email is required"),
-  role: z.enum(["officer", "supervisor", "admin"]),
-  phone: z.string().optional(),
-  department: z.string().optional(),
-  isActive: z.boolean(),
-});
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Current password is required"),
+    newPassword: z.string().min(8, "New password must be at least 8 characters"),
+    confirmPassword: z.string().min(1, "Confirm the new password"),
+  })
+  .refine((values) => values.newPassword === values.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
 
-export type ProfileFormValues = z.infer<typeof profileSchema>;
-export type OfficerFormValues = z.infer<typeof officerSchema>;
+export type LoginFormValues = z.infer<typeof loginSchema>;
+export type ChangePasswordFormValues = z.infer<typeof changePasswordSchema>;
