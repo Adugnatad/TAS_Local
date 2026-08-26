@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { customers, now } from "@/app/api/_data/store";
-import type { CustomerProfile } from "@/features/onboarding/types";
+import type { CustomerProfile } from "@/lib/types";
 
 type Context = { params: { customerId: string } };
 

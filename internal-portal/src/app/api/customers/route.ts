@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
-import type { CustomerProfile } from "@/features/onboarding/types";
+import { NextResponse, NextRequest } from "next/server";
+import type { CustomerProfile } from "@/lib/types";
 import { customers, now } from "@/app/api/_data/store";
+import { createCustomer } from "@/lib/apis/customer_apis";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const page = Number(url.searchParams.get("page") ?? 1);
   const pageSize = Number(url.searchParams.get("pageSize") ?? 10);
@@ -27,11 +28,8 @@ export async function GET(request: Request) {
   });
 }
 
-export async function POST(request: Request) {
-  const body = (await request.json()) as Omit<
-    CustomerProfile,
-    "id" | "createdAt" | "updatedAt" | "onboardingStatus"
-  >;
+export async function POST(request: NextRequest) {
+  const body = JSON.parse((await request.json()) as string);
   const timestamp = now();
   const customer: CustomerProfile = {
     id: `cust-${String(customers.length + 1).padStart(3, "0")}`,
@@ -40,6 +38,13 @@ export async function POST(request: Request) {
     createdAt: timestamp,
     updatedAt: timestamp,
   };
-  customers.unshift(customer);
-  return NextResponse.json(customer, { status: 201 });
+  try {
+    const newCustomer = await createCustomer(customer);
+    return NextResponse.json(newCustomer, { status: 201 });
+  } catch (error: any) {
+    return NextResponse.json(
+      { message: error.message || "Failed to create customer" },
+      { status: 400 },
+    );
+  }
 }

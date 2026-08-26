@@ -1,11 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  createCustomer,
-  fetchCustomer,
-  fetchCustomers,
-  updateCustomer,
-} from "../api";
-import type { CreateCustomerInput, CustomerListParams, UpdateCustomerInput } from "../types";
+import { fetchCustomer, fetchCustomers, updateCustomer } from "@/lib/apis/customer_apis";
+import type {
+  CreateCustomerInput,
+  CustomerListParams,
+  UpdateCustomerInput,
+} from "../../../lib/types";
 
 export const customerKeys = {
   all: ["customers"] as const,
@@ -30,14 +29,16 @@ export function useCustomer(customerId: string) {
   });
 }
 
-export function useCreateCustomer() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (input: CreateCustomerInput) => createCustomer(input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: customerKeys.lists() });
+export async function CreateCustomer(input: CreateCustomerInput) {
+  const response = await fetch(`/api/customers`, {
+    method: "POST",
+    body: JSON.stringify(input),
+    headers: {
+      "Content-Type": "application/json",
     },
   });
+  const data = await response.json();
+  return data;
 }
 
 export function useUpdateCustomer(customerId: string) {

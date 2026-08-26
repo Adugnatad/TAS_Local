@@ -5,7 +5,7 @@ import type {
   CustomerListParams,
   CustomerProfile,
   UpdateCustomerInput,
-} from "./types";
+} from "../types";
 
 export async function fetchCustomers(
   params: CustomerListParams = {},

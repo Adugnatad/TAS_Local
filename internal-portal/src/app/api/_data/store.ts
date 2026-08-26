@@ -1,5 +1,5 @@
 import { customersFixture } from "@/features/onboarding/mocks/fixtures";
-import type { CustomerProfile } from "@/features/onboarding/types";
+import type { CustomerProfile } from "@/lib/types";
 import {
   officersFixture,
   rolePermissionsFixture,

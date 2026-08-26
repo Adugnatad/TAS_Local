@@ -1,4 +1,4 @@
-import type { CustomerProfile } from "../types";
+import type { CustomerProfile } from "../../../lib/types";
 
 const statuses: CustomerProfile["onboardingStatus"][] = [
   "draft",

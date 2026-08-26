@@ -5,16 +5,13 @@ import { useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import type { CustomerProfile as OrganizationProfile, ValidationResult } from "../types";
+import type { CustomerProfile as OrganizationProfile, ValidationResult } from "../../../lib/types";
 import {
   customerProfileSchema as organizationProfileSchema,
   type CustomerProfileFormValues as OrganizationProfileFormValues,
 } from "../schemas";
 import { apiClient } from "@/lib/api-client";
-import {
-  useCreateCustomer as useCreateOrganization,
-  useUpdateCustomer as useUpdateOrganization,
-} from "../hooks/useCustomers";
+import { CreateCustomer, useUpdateCustomer as useUpdateOrganization } from "../hooks/useCustomers";
 import { useSession } from "@/features/auth/hooks/useSession";
 import { useCan } from "@/features/settings/hooks/useCan";
 import { Button } from "@/components/ui/button";
@@ -37,7 +34,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ONBOARDING_STATUS_LABELS } from "@/lib/constants";
-import { StatusBadge } from "@/components/shared/StatusBadge";
 
 interface OrganizationFormProps {
   organization?: OrganizationProfile;
@@ -70,8 +66,8 @@ export function OrganizationForm({ organization }: OrganizationFormProps) {
   const { hasRole } = useSession();
   const canApproveOnboarding = useCan("onboarding.approve");
   const isEdit = !!organization;
-  const createMutation = useCreateOrganization();
   const updateMutation = useUpdateOrganization(organization?.id ?? "");
+  const [isPending, setIsPending] = useState(false);
 
   const form = useForm<OrganizationProfileFormValues>({
     resolver: zodResolver(organizationProfileSchema),
@@ -99,16 +95,19 @@ export function OrganizationForm({ organization }: OrganizationFormProps) {
   const hasWorkflowActions = canSubmitForReview || canApprove;
 
   async function onSubmit(values: OrganizationProfileFormValues) {
+    setIsPending(true);
     try {
       if (isEdit) {
         await updateMutation.mutateAsync(values);
         toast.success("Organization profile updated.");
       } else {
-        const created = await createMutation.mutateAsync(values);
+        const created = await CreateCustomer(values);
+        if (created) setIsPending(false);
         toast.success("Organization profile created.");
         router.push(`/onboarding/${created.id}`);
       }
     } catch {
+      setIsPending(false);
       toast.error("Failed to save organization profile.");
     }
   }
@@ -122,8 +121,6 @@ export function OrganizationForm({ organization }: OrganizationFormProps) {
       toast.error("Failed to update status.");
     }
   }
-
-  const isPending = createMutation.isPending || updateMutation.isPending;
 
   return (
     <div className="flex flex-col items-center justify-center w-full space-y-5">
