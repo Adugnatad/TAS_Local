@@ -26,6 +26,10 @@ export interface OrganizationSummary {
   tinNameMatchPercent?: number | null;
   crmSystemId?: string | null;
   cbsCustomerId?: string | null;
+  assignedCseUserId?: string | null;
+  assignedCseName?: string | null;
+  assignedCseUsername?: string | null;
+  assignedCseCrmSystemId?: string | null;
   effectiveDate?: string | null;
   expiryDate?: string | null;
   activeUsers?: number;
@@ -46,6 +50,10 @@ export interface OrganizationDetail {
   address: string | null;
   crmSystemId: string | null;
   cbsCustomerId: string | null;
+  assignedCseUserId?: string | null;
+  assignedCseName?: string | null;
+  assignedCseUsername?: string | null;
+  assignedCseCrmSystemId?: string | null;
   status: OrgStatus;
   effectiveDate: string | null;
   expiryDate: string | null;
@@ -66,6 +74,7 @@ export interface OrganizationWritePayload {
   description?: string;
   effectiveDate?: string;
   expiryDate?: string;
+  assignedCseUserId?: string;
   accounts?: Array<{
     accountNo: string;
     currency: string;

@@ -29,5 +29,19 @@ export interface MatrixEvaluation {
   result?: string;
   status?: string;
   authorized?: boolean;
+  amount?: number;
+  approvalType?: string;
+  approvalAction?: string;
+  requestRef?: string;
+  matchedRuleId?: string;
+  signatoryGroupId?: string;
+  message?: string;
+  requiredSignatories?: Array<{
+    userId?: string;
+    username?: string;
+    firstName?: string;
+    lastName?: string;
+    order?: number;
+  }>;
   [key: string]: unknown;
 }

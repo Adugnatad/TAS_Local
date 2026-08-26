@@ -5,6 +5,7 @@ export interface Employee {
   firstName: string | null;
   lastName: string | null;
   phone: string | null;
+  crmSystemId?: string | null;
   status: string;
   roles: string[];
 }
@@ -16,5 +17,6 @@ export interface CreateEmployeeInput {
   firstName?: string;
   lastName?: string;
   phone?: string;
+  crmSystemId?: string;
   roles: string[];
 }

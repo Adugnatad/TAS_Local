@@ -6,7 +6,7 @@ import { useForm, type Control } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { orgUserUpdateSchema, type OrgUserUpdateFormValues } from "../schemas";
-import { useOrgUserMutations, useOrgUsers } from "../hooks";
+import { useOrganization, useOrgUserMutations, useOrgUsers } from "../hooks";
 import { formatOrgApiError } from "../tin";
 import type { OrganizationUser } from "../types";
 import { useSession } from "@/features/auth/hooks/useSession";
@@ -17,6 +17,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { cn } from "@/lib/utils";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Dialog,
   DialogContent,
@@ -107,8 +108,10 @@ export function OrganizationUsersPanel({ orgId }: { orgId: string }) {
   const canManage = can("MANAGE_ORGANIZATIONS");
   const [page, setPage] = useState(0);
   const [editing, setEditing] = useState<OrganizationUser | null>(null);
+  const org = useOrganization(orgId);
   const query = useOrgUsers(orgId, { page, size: 20 });
   const mutations = useOrgUserMutations(orgId);
+  const hasCse = Boolean(org.data?.assignedCseUserId);
 
   const editForm = useForm<OrgUserUpdateFormValues>({
     resolver: zodResolver(orgUserUpdateSchema),
@@ -141,12 +144,25 @@ export function OrganizationUsersPanel({ orgId }: { orgId: string }) {
 
   return (
     <div className="space-y-4">
+      {!hasCse && !org.isLoading && (
+        <Alert>
+          <AlertTitle>CSE required</AlertTitle>
+          <AlertDescription>
+            A CSE must be assigned before adding users. Assign one from the organization overview.
+          </AlertDescription>
+        </Alert>
+      )}
       <div className="flex justify-end">
-        {canManage && (
-          <Link href={`/organizations/${orgId}/users/new`} className={cn(buttonVariants())}>
-            Add user
-          </Link>
-        )}
+        {canManage &&
+          (hasCse ? (
+            <Link href={`/organizations/${orgId}/users/new`} className={cn(buttonVariants())}>
+              Add user
+            </Link>
+          ) : (
+            <Button disabled title="A CSE must be assigned before adding users.">
+              Add user
+            </Button>
+          ))}
       </div>
 
       {query.isLoading ? (

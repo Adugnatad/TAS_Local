@@ -39,17 +39,39 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-const schema = z.object({
-  username: z.string().min(1),
-  password: z.string().min(8),
-  email: z.string().email().optional().or(z.literal("")),
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
-  phone: z.string().optional(),
-  rolesText: z.string().min(1, "At least one role name, e.g. BankCSE"),
-});
+const schema = z
+  .object({
+    username: z.string().min(1),
+    password: z.string().min(8),
+    email: z.string().email().optional().or(z.literal("")),
+    firstName: z.string().optional(),
+    lastName: z.string().optional(),
+    phone: z.string().optional(),
+    crmSystemId: z.string().optional(),
+    rolesText: z.string().min(1, "At least one role name, e.g. BankCSE"),
+  })
+  .superRefine((values, ctx) => {
+    const roles = values.rolesText
+      .split(",")
+      .map((r) => r.trim())
+      .filter(Boolean);
+    if (roles.includes("BankCSE") && !values.crmSystemId?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "CRM system ID is required for BankCSE",
+        path: ["crmSystemId"],
+      });
+    }
+  });
 
 type FormValues = z.infer<typeof schema>;
+
+function formatEmployeeApiError(error: unknown, fallback: string): string {
+  if (!(error instanceof ApiError)) return fallback;
+  if (error.code === "CRM_ID_REQUIRED") return "CRM system ID is required for BankCSE employees.";
+  if (error.code === "CRM_ID_EXISTS") return "This CRM system ID is already assigned to another user.";
+  return error.message || fallback;
+}
 
 export function EmployeeDirectory() {
   const [page, setPage] = useState(0);
@@ -60,8 +82,22 @@ export function EmployeeDirectory() {
   const roles = useRoles({ scope: "EMPLOYEE" });
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { username: "", password: "", rolesText: "BankCSE" },
+    defaultValues: {
+      username: "",
+      password: "",
+      email: "",
+      firstName: "",
+      lastName: "",
+      phone: "",
+      crmSystemId: "",
+      rolesText: "BankCSE",
+    },
   });
+  const rolesText = form.watch("rolesText");
+  const requiresCrmId = rolesText
+    .split(",")
+    .map((r) => r.trim())
+    .includes("BankCSE");
 
   async function onSubmit(values: FormValues) {
     try {
@@ -72,13 +108,23 @@ export function EmployeeDirectory() {
         firstName: values.firstName,
         lastName: values.lastName,
         phone: values.phone,
+        crmSystemId: values.crmSystemId?.trim() || undefined,
         roles: values.rolesText.split(",").map((r) => r.trim()).filter(Boolean),
       });
       toast.success("Employee created.");
       setOpen(false);
-      form.reset();
+      form.reset({
+        username: "",
+        password: "",
+        email: "",
+        firstName: "",
+        lastName: "",
+        phone: "",
+        crmSystemId: "",
+        rolesText: "BankCSE",
+      });
     } catch (error) {
-      toast.error(error instanceof ApiError ? error.message : "Create failed.");
+      toast.error(formatEmployeeApiError(error, "Create failed."));
     }
   }
 
@@ -174,6 +220,21 @@ export function EmployeeDirectory() {
                       </FormItem>
                     )}
                   />
+                  {requiresCrmId && (
+                    <FormField
+                      control={form.control}
+                      name="crmSystemId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>CRM system ID</FormLabel>
+                          <FormControl>
+                            <Input placeholder="CSE-0001" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                   <Button type="submit" disabled={create.isPending}>
                     Create
                   </Button>
@@ -196,6 +257,7 @@ export function EmployeeDirectory() {
             <TableRow>
               <TableHead>Username</TableHead>
               <TableHead>Name</TableHead>
+              <TableHead>CRM ID</TableHead>
               <TableHead>Roles</TableHead>
               <TableHead>Status</TableHead>
               <TableHead />
@@ -208,6 +270,7 @@ export function EmployeeDirectory() {
                 <TableCell>
                   {[employee.firstName, employee.lastName].filter(Boolean).join(" ") || "—"}
                 </TableCell>
+                <TableCell>{employee.crmSystemId ?? "—"}</TableCell>
                 <TableCell>{employee.roles.join(", ")}</TableCell>
                 <TableCell>
                   <StatusBadge status={employee.status} />

@@ -9,6 +9,7 @@ import { orgFormSchema, type OrgFormValues } from "../schemas";
 import { useCreateOrganization, useUpdateOrganization } from "../hooks";
 import type { OrganizationDetail, OrganizationWritePayload } from "../types";
 import { formatOrgApiError } from "../tin";
+import { useEmployees } from "@/features/employees/hooks";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,13 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 function toPayload(values: OrgFormValues, includeAccount: boolean): OrganizationWritePayload {
   const payload: OrganizationWritePayload = {
@@ -42,6 +50,9 @@ function toPayload(values: OrgFormValues, includeAccount: boolean): Organization
     effectiveDate: values.effectiveDate || undefined,
     expiryDate: values.expiryDate || undefined,
   };
+  if (values.assignedCseUserId) {
+    payload.assignedCseUserId = values.assignedCseUserId;
+  }
   if (includeAccount && values.accountNo) {
     payload.accounts = [
       {
@@ -67,6 +78,12 @@ export function OrganizationForm({
   const create = useCreateOrganization();
   const update = useUpdateOrganization(organization?.id ?? "");
   const [file, setFile] = useState<File | null>(null);
+  const employees = useEmployees({ page: 0, size: 100 });
+  const cseOptions =
+    employees.data?.content.filter(
+      (employee) =>
+        employee.status === "ACTIVE" && employee.roles.includes("BankCSE"),
+    ) ?? [];
 
   const form = useForm<OrgFormValues>({
     resolver: zodResolver(orgFormSchema),
@@ -79,6 +96,7 @@ export function OrganizationForm({
       description: organization?.description ?? "",
       effectiveDate: organization?.effectiveDate ?? "",
       expiryDate: organization?.expiryDate ?? "",
+      assignedCseUserId: organization?.assignedCseUserId ?? "",
       accountNo: organization?.accounts[0]?.accountNo ?? "",
       currency: organization?.accounts[0]?.currency ?? "ETB",
       accountType: organization?.accounts[0]?.accountType ?? "CURRENT",
@@ -234,6 +252,43 @@ export function OrganizationForm({
               />
               {!isEdit && (
                 <>
+                  <FormField
+                    control={form.control}
+                    name="assignedCseUserId"
+                    render={({ field }) => (
+                      <FormItem className="sm:col-span-2">
+                        <FormLabel>Assigned CSE (optional)</FormLabel>
+                        <Select
+                          value={field.value || undefined}
+                          onValueChange={(value) => field.onChange(value ?? "")}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a BankCSE employee" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {cseOptions.map((employee) => {
+                              const label = [
+                                [employee.firstName, employee.lastName]
+                                  .filter(Boolean)
+                                  .join(" ") || employee.username,
+                                employee.crmSystemId ? `(${employee.crmSystemId})` : null,
+                              ]
+                                .filter(Boolean)
+                                .join(" ");
+                              return (
+                                <SelectItem key={employee.id} value={employee.id}>
+                                  {label}
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   <FormField
                     control={form.control}
                     name="accountNo"

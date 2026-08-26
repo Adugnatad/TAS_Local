@@ -1,11 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { format, parseISO, isValid } from "date-fns";
 import { toast } from "sonner";
 import { MoreVertical } from "lucide-react";
-import { useOrganization, useOrgLifecycle, useOrgUsers, useOrgUserMutations } from "../hooks";
+import {
+  useAssignOrganizationCse,
+  useOrganization,
+  useOrgLifecycle,
+  useOrgUsers,
+  useOrgUserMutations,
+} from "../hooks";
 import { formatOrgApiError, tinVerificationLabel } from "../tin";
+import { useEmployees } from "@/features/employees/hooks";
 import { useSession } from "@/features/auth/hooks/useSession";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ErrorState } from "@/components/shared/ErrorState";
@@ -15,6 +23,19 @@ import { cn } from "@/lib/utils";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -53,9 +74,19 @@ export function OrganizationOverview({ orgId }: { orgId: string }) {
   const { can } = useSession();
   const query = useOrganization(orgId);
   const lifecycle = useOrgLifecycle(orgId);
+  const assignCse = useAssignOrganizationCse(orgId);
   const users = useOrgUsers(orgId, { page: 0, size: 20 });
   const userMutations = useOrgUserMutations(orgId);
+  const employees = useEmployees({ page: 0, size: 100 });
   const canManage = can("MANAGE_ORGANIZATIONS");
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [selectedCseId, setSelectedCseId] = useState("");
+
+  const cseOptions =
+    employees.data?.content.filter(
+      (employee) =>
+        employee.status === "ACTIVE" && employee.roles.includes("BankCSE"),
+    ) ?? [];
 
   async function run(action: () => Promise<unknown>, ok: string) {
     try {
@@ -67,10 +98,26 @@ export function OrganizationOverview({ orgId }: { orgId: string }) {
     }
   }
 
+  async function onAssignCse() {
+    if (!selectedCseId) {
+      toast.error("Select a CSE employee.");
+      return;
+    }
+    try {
+      await assignCse.mutateAsync(selectedCseId);
+      toast.success(query.data?.assignedCseUserId ? "CSE reassigned." : "CSE assigned.");
+      setAssignOpen(false);
+      setSelectedCseId("");
+    } catch (error) {
+      toast.error(formatOrgApiError(error, "Assign CSE failed."));
+    }
+  }
+
   if (query.isLoading) return <Skeleton className="h-48 w-full" />;
   if (query.isError || !query.data) return <ErrorState onRetry={() => query.refetch()} />;
 
   const org = query.data;
+  const hasCse = Boolean(org.assignedCseUserId);
   const tin = tinVerificationLabel(org);
   const infoRows: Array<{ label: string; value: React.ReactNode }> = [
     { label: "Customer ID", value: org.cbsCustomerId || org.crmSystemId || org.tin || "—" },
@@ -79,6 +126,12 @@ export function OrganizationOverview({ orgId }: { orgId: string }) {
     { label: "Address", value: org.address ?? "—" },
     { label: "CRM ID", value: org.crmSystemId ?? "—" },
     { label: "CBS ID", value: org.cbsCustomerId ?? "—" },
+    {
+      label: "Assigned CSE",
+      value: org.assignedCseName || org.assignedCseUsername || "—",
+    },
+    { label: "CSE username", value: org.assignedCseUsername ?? "—" },
+    { label: "CSE CRM ID", value: org.assignedCseCrmSystemId ?? "—" },
     { label: "Effective Date", value: formatDate(org.effectiveDate) },
     { label: "Expiry Date", value: formatDate(org.expiryDate) },
     { label: "Created by", value: org.createdBy ?? "—" },
@@ -97,6 +150,16 @@ export function OrganizationOverview({ orgId }: { orgId: string }) {
         </Alert>
       )}
 
+      {!hasCse && (
+        <Alert>
+          <AlertTitle>CSE not assigned</AlertTitle>
+          <AlertDescription>
+            A CSE must be assigned before adding users. Organization users and signatory setup
+            stay blocked until then.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {org.tinValidationStatus !== "VALIDATED" && (
         <Alert>
           <AlertTitle>TIN not verified for CoopStream</AlertTitle>
@@ -107,29 +170,45 @@ export function OrganizationOverview({ orgId }: { orgId: string }) {
         </Alert>
       )}
 
-      {canManage && org.tinValidationStatus !== "VALIDATED" && (
+      {canManage && (
         <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
             size="sm"
-            onClick={() => run(() => lifecycle.verifyTin.mutateAsync(), "TIN verification complete.")}
-          >
-            Verify TIN (eTrade)
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
             onClick={() => {
-              const note = window.prompt("Team verification note");
-              if (!note?.trim()) return;
-              void run(
-                () => lifecycle.verifyManual.mutateAsync(note.trim()),
-                "Marked verified by team.",
-              );
+              setSelectedCseId(org.assignedCseUserId ?? "");
+              setAssignOpen(true);
             }}
           >
-            Team verify
+            {hasCse ? "Reassign CSE" : "Assign CSE"}
           </Button>
+          {org.tinValidationStatus !== "VALIDATED" && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  run(() => lifecycle.verifyTin.mutateAsync(), "TIN verification complete.")
+                }
+              >
+                Verify TIN (eTrade)
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const note = window.prompt("Team verification note");
+                  if (!note?.trim()) return;
+                  void run(
+                    () => lifecycle.verifyManual.mutateAsync(note.trim()),
+                    "Marked verified by team.",
+                  );
+                }}
+              >
+                Team verify
+              </Button>
+            </>
+          )}
         </div>
       )}
 
@@ -179,15 +258,25 @@ export function OrganizationOverview({ orgId }: { orgId: string }) {
       <section>
         <div className="mb-3 flex items-center justify-between gap-2">
           <SectionTitle>Contract Users</SectionTitle>
-          {canManage && (
-            <Link
-              href={`/organizations/${orgId}/users/new`}
-              className={cn(buttonVariants({ size: "sm" }))}
-            >
-              Add user
-            </Link>
-          )}
+          {canManage &&
+            (hasCse ? (
+              <Link
+                href={`/organizations/${orgId}/users/new`}
+                className={cn(buttonVariants({ size: "sm" }))}
+              >
+                Add user
+              </Link>
+            ) : (
+              <Button size="sm" disabled title="A CSE must be assigned before adding users.">
+                Add user
+              </Button>
+            ))}
         </div>
+        {!hasCse && (
+          <p className="mb-3 text-sm text-muted-foreground">
+            A CSE must be assigned before adding users.
+          </p>
+        )}
         {users.isLoading ? (
           <TableSkeleton rows={4} />
         ) : users.isError ? (
@@ -253,6 +342,48 @@ export function OrganizationOverview({ orgId }: { orgId: string }) {
           </div>
         )}
       </section>
+
+      <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{hasCse ? "Reassign CSE" : "Assign CSE"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Select
+              value={selectedCseId || undefined}
+              onValueChange={(v) => setSelectedCseId(v ?? "")}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a BankCSE employee" />
+              </SelectTrigger>
+              <SelectContent>
+                {cseOptions.map((employee) => {
+                  const label = [
+                    [employee.firstName, employee.lastName].filter(Boolean).join(" ") ||
+                      employee.username,
+                    employee.crmSystemId ? `(${employee.crmSystemId})` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" ");
+                  return (
+                    <SelectItem key={employee.id} value={employee.id}>
+                      {label}
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setAssignOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={() => void onAssignCse()} disabled={assignCse.isPending}>
+                Save
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

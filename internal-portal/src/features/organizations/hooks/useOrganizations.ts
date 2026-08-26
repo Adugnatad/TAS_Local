@@ -65,3 +65,14 @@ export function useOrgLifecycle(id: string) {
     }),
   };
 }
+
+export function useAssignOrganizationCse(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (cseUserId: string) => api.assignOrganizationCse(id, cseUserId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: orgKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: orgKeys.all });
+    },
+  });
+}

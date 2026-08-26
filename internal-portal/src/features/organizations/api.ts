@@ -73,6 +73,16 @@ export async function verifyManual(id: string, note: string): Promise<Organizati
   return apiClient(`/organizations/${id}/verify-manual`, { method: "POST", body: { note } });
 }
 
+export async function assignOrganizationCse(
+  id: string,
+  cseUserId: string,
+): Promise<OrganizationDetail> {
+  return apiClient(`/organizations/${id}/assign-cse`, {
+    method: "POST",
+    body: { cseUserId },
+  });
+}
+
 export async function fetchOrgUsers(
   orgId: string,
   params: ApiListParams,

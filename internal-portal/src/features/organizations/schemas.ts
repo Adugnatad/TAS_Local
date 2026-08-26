@@ -9,6 +9,7 @@ export const orgFormSchema = z.object({
   description: z.string().optional(),
   effectiveDate: z.string().optional(),
   expiryDate: z.string().optional(),
+  assignedCseUserId: z.string().optional(),
   accountNo: z.string().optional(),
   currency: z.string().optional(),
   accountType: z.string().optional(),
