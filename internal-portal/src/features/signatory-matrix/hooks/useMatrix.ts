@@ -1,38 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import * as api from "./api";
-
-export const matrixKeys = {
-  groups: (orgId: string) => ["signatory", orgId, "groups"] as const,
-  members: (orgId: string, groupId: string) => ["signatory", orgId, "members", groupId] as const,
-  rules: (orgId: string, params?: unknown) => ["signatory", orgId, "rules", params ?? {}] as const,
-};
-
-export function useSignatoryGroups(orgId: string) {
-  return useQuery({
-    queryKey: matrixKeys.groups(orgId),
-    queryFn: () => api.fetchGroups(orgId),
-    enabled: Boolean(orgId),
-  });
-}
-
-export function useSignatoryMembers(orgId: string, groupId: string) {
-  return useQuery({
-    queryKey: matrixKeys.members(orgId, groupId),
-    queryFn: () => api.fetchMembers(orgId, groupId),
-    enabled: Boolean(orgId && groupId),
-  });
-}
-
-export function useApprovalRules(
-  orgId: string,
-  params?: { type?: string; groupId?: string },
-) {
-  return useQuery({
-    queryKey: matrixKeys.rules(orgId, params),
-    queryFn: () => api.fetchRules(orgId, params),
-    enabled: Boolean(orgId),
-  });
-}
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import * as api from "../api";
 
 export function useMatrixMutations(orgId: string) {
   const qc = useQueryClient();

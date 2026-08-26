@@ -1,4 +1,4 @@
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "/portal-api";
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "/api";
 
 export const PERMISSION_LABELS: Record<string, string> = {
   MANAGE_EMPLOYEES: "Manage employees",

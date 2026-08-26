@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ApiListParams } from "@/types/global";
-import * as api from "./api";
-import type { LoanPayload } from "./types";
+import * as api from "../api";
+import type { LoanPayload } from "../types";
 
 export const loanKeys = {
   list: (orgId: string, params?: unknown) => ["loans", orgId, params] as const,
