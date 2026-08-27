@@ -1,12 +1,12 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import type { ApiListParams } from "@/types/global";
 import * as api from "../api";
-import type { LoanPayload } from "../types";
 
 export const loanKeys = {
   list: (orgId: string, params?: unknown) => ["loans", orgId, params] as const,
   detail: (orgId: string, id: string) => ["loans", orgId, id] as const,
   catalogs: ["catalogs"] as const,
+  enums: ["loan-request-enums"] as const,
 };
 
 export function useLoanRequests(orgId: string, params?: ApiListParams) {
@@ -35,17 +35,9 @@ export function useCatalogs() {
   });
 }
 
-export function useLoanMutations(orgId: string) {
-  const qc = useQueryClient();
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["loans", orgId] });
-  return {
-    create: useMutation({
-      mutationFn: (body: LoanPayload) => api.createLoanRequest(orgId, body),
-      onSuccess: invalidate,
-    }),
-    submit: useMutation({
-      mutationFn: (id: string) => api.submitLoanRequest(orgId, id),
-      onSuccess: invalidate,
-    }),
-  };
+export function useLoanRequestEnums() {
+  return useQuery({
+    queryKey: loanKeys.enums,
+    queryFn: () => api.fetchLoanRequestEnums(),
+  });
 }

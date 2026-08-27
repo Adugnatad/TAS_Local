@@ -6,6 +6,7 @@ import type {
   OrgAccount,
   OrgAccountInput,
   OrgDocument,
+  DocumentTypeOption,
   OrganizationDetail,
   OrganizationSummary,
   OrganizationUser,
@@ -167,17 +168,62 @@ export async function fetchOrgDocuments(orgId: string): Promise<OrgDocument[]> {
   return Array.isArray(data) ? data : data.content;
 }
 
+export async function fetchDocumentTypes(): Promise<DocumentTypeOption[]> {
+  const data = await apiClient<
+    | DocumentTypeOption[]
+    | Array<string | { code?: string; name?: string; label?: string; value?: string }>
+    | { content: Array<string | { code?: string; name?: string; label?: string; value?: string }> }
+  >("/document-types");
+  const items = Array.isArray(data) ? data : data.content;
+  return items
+    .map((item) => {
+      if (typeof item === "string") return { code: item, label: item };
+      if ("code" in item && "label" in item && item.code && item.label) {
+        return { code: String(item.code), label: String(item.label) };
+      }
+      const code = String(
+        (item as { code?: string; value?: string; name?: string }).code ||
+          (item as { value?: string }).value ||
+          (item as { name?: string }).name ||
+          "",
+      );
+      if (!code) return null;
+      const label = String(
+        (item as { label?: string; name?: string }).label ||
+          (item as { name?: string }).name ||
+          code,
+      );
+      return { code, label };
+    })
+    .filter((item): item is DocumentTypeOption => Boolean(item));
+}
+
 export async function uploadOrgDocument(
   orgId: string,
   file: File,
-  type = "BUSINESS_LICENSE",
+  options: { type: string; documentName?: string },
 ): Promise<OrganizationDetail | unknown> {
   const form = new FormData();
   form.append("file", file);
   return apiClient(`/organizations/${orgId}/documents`, {
     method: "POST",
     body: form,
-    params: { type },
+    params: {
+      type: options.type,
+      documentName: options.documentName,
+    },
+  });
+}
+
+export async function uploadBusinessLicense(
+  orgId: string,
+  file: File,
+): Promise<OrganizationDetail | unknown> {
+  const form = new FormData();
+  form.append("file", file);
+  return apiClient(`/organizations/${orgId}/business-license`, {
+    method: "POST",
+    body: form,
   });
 }
 

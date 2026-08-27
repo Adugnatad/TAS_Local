@@ -13,6 +13,7 @@ const FORWARD_RESPONSE_HEADERS = [
   "content-type",
   "content-disposition",
   "cache-control",
+  "x-request-id",
 ] as const;
 
 /**

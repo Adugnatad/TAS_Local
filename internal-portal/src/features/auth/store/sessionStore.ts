@@ -1,6 +1,11 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { clearTokens, setOnUnauthorized, setTokens } from "@/lib/token-store";
+import {
+  clearTokens,
+  setOnTokensUpdated,
+  setOnUnauthorized,
+  setTokens,
+} from "@/lib/token-store";
 import type { SessionUser } from "../types";
 
 interface SessionState {
@@ -61,4 +66,13 @@ setOnUnauthorized(() => {
   if (typeof window !== "undefined") {
     window.location.href = "/login";
   }
+});
+
+setOnTokensUpdated((access, refresh) => {
+  // Keep persisted Zustand session in sync when api-client refreshes tokens.
+  useSessionStore.setState({
+    accessToken: access,
+    refreshToken: refresh,
+    isAuthenticated: true,
+  });
 });

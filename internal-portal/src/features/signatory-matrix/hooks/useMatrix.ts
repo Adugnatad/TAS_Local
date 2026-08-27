@@ -58,9 +58,5 @@ export function useMatrixMutations(orgId: string) {
         api.setRuleActive(orgId, ruleId, active),
       onSuccess: invalidate,
     }),
-    evaluate: useMutation({
-      mutationFn: (input: Parameters<typeof api.evaluateMatrix>[1]) =>
-        api.evaluateMatrix(orgId, input),
-    }),
   };
 }

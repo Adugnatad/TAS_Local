@@ -7,7 +7,8 @@ export interface SessionUser {
   userType: "EMPLOYEE" | "ORGANIZATION" | string;
   roles: string[];
   permissions: string[];
-  organizationId: string | null;
+  /** Full organization object for org users; null for employees. */
+  organization: unknown | null;
   permissionType: string | null;
 }
 

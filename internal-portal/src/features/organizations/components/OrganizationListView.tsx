@@ -5,6 +5,7 @@ import Link from "next/link";
 import { format, parseISO, isValid } from "date-fns";
 import { MoreVertical, Plus } from "lucide-react";
 import { useOrganizations } from "../hooks";
+import { tinVerificationLabel } from "../tin";
 import { useSession } from "@/features/auth/hooks/useSession";
 import { ORG_STATUSES, type OrgStatus } from "@/lib/constants";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -174,6 +175,8 @@ export function OrganizationListView() {
                 <TableRow className="bg-sky-50/80 hover:bg-sky-50/80">
                   <TableHead>Contract Name</TableHead>
                   <TableHead>Customer ID</TableHead>
+                  <TableHead>TIN</TableHead>
+                  <TableHead>Verification</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Effective Date</TableHead>
                   <TableHead>Expiry Date</TableHead>
@@ -184,7 +187,9 @@ export function OrganizationListView() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map((org) => (
+                {rows.map((org) => {
+                  const tin = tinVerificationLabel(org);
+                  return (
                   <TableRow key={org.id}>
                     <TableCell>
                       <Link
@@ -195,6 +200,10 @@ export function OrganizationListView() {
                       </Link>
                     </TableCell>
                     <TableCell className="tabular-nums">{customerId(org)}</TableCell>
+                    <TableCell className="tabular-nums">{org.tin ?? "—"}</TableCell>
+                    <TableCell>
+                      <StatusBadge status={tin.status} label={tin.label} />
+                    </TableCell>
                     <TableCell>
                       <StatusBadge status={org.status} />
                     </TableCell>
@@ -229,7 +238,8 @@ export function OrganizationListView() {
                       </DropdownMenu>
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           </div>

@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { MoreVertical, Plus } from "lucide-react";
-import { useApprovalRules, useMatrixMutations, useSignatoryGroups } from "../hooks";
+import { useApprovalRules, useApprovalTypes, useMatrixMutations, useSignatoryGroups } from "../hooks";
 import type { ApprovalRule } from "../types";
 import { useSession } from "@/features/auth/hooks/useSession";
 import { APPROVAL_ACTIONS, APPROVAL_TYPES } from "@/lib/constants";
@@ -51,8 +51,8 @@ type RuleFormState = {
   signatoryGroupId: string;
 };
 
-const emptyForm = (): RuleFormState => ({
-  approvalType: APPROVAL_TYPES[0],
+const emptyForm = (approvalType = APPROVAL_TYPES[0] as string): RuleFormState => ({
+  approvalType,
   approvalAction: APPROVAL_ACTIONS[0],
   minAmount: "0",
   maxAmount: "1000000",
@@ -64,12 +64,14 @@ export function SignatoryRulesPanel({ orgId }: { orgId: string }) {
   const canManage = can("MANAGE_SIGNATORY_ANY");
   const groups = useSignatoryGroups(orgId);
   const mutations = useMatrixMutations(orgId);
+  const approvalTypes = useApprovalTypes();
+  const typeOptions = approvalTypes.data ?? APPROVAL_TYPES.map((code) => ({ code, label: code }));
 
   const [typeFilter, setTypeFilter] = useState<string>("ALL");
   const [groupFilter, setGroupFilter] = useState<string>("ALL");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ApprovalRule | null>(null);
-  const [form, setForm] = useState<RuleFormState>(emptyForm);
+  const [form, setForm] = useState<RuleFormState>(() => emptyForm(typeOptions[0]?.code));
 
   const queryParams = useMemo(
     () => ({
@@ -89,7 +91,7 @@ export function SignatoryRulesPanel({ orgId }: { orgId: string }) {
 
   function openCreate() {
     setEditing(null);
-    setForm(emptyForm());
+    setForm(emptyForm(typeOptions[0]?.code));
     setDialogOpen(true);
   }
 
@@ -175,9 +177,9 @@ export function SignatoryRulesPanel({ orgId }: { orgId: string }) {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="ALL">All approval types</SelectItem>
-            {APPROVAL_TYPES.map((item) => (
-              <SelectItem key={item} value={item}>
-                {item}
+            {typeOptions.map((item) => (
+              <SelectItem key={item.code} value={item.code}>
+                {item.label}
               </SelectItem>
             ))}
           </SelectContent>
@@ -286,9 +288,9 @@ export function SignatoryRulesPanel({ orgId }: { orgId: string }) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {APPROVAL_TYPES.map((item) => (
-                    <SelectItem key={item} value={item}>
-                      {item}
+                  {typeOptions.map((item) => (
+                    <SelectItem key={item.code} value={item.code}>
+                      {item.label}
                     </SelectItem>
                   ))}
                 </SelectContent>

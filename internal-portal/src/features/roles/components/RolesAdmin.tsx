@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
 import { usePermissionsCatalog, useRoleMutations, useRoles } from "../hooks";
+import type { PortalRole } from "../types";
 import { useSession } from "@/features/auth/hooks/useSession";
 import { PERMISSION_LABELS } from "@/lib/constants";
 import { ApiError } from "@/lib/api-client";
@@ -54,16 +55,21 @@ export function RolesAdmin() {
   const [scopeFilter, setScopeFilter] = useState<"EMPLOYEE" | "ORGANIZATION" | "ALL">(
     "EMPLOYEE",
   );
+  const [q, setQ] = useState("");
   const query = useRoles({
     scope: scopeFilter === "ALL" ? undefined : scopeFilter,
+    q: q.trim() || undefined,
   });
   const permissions = usePermissionsCatalog();
   const mutations = useRoleMutations();
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<PortalRole | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [scope, setScope] = useState("EMPLOYEE");
+  const [editDescription, setEditDescription] = useState("");
+  const [editSelected, setEditSelected] = useState<string[]>([]);
 
   const roles = useMemo(() => query.data ?? [], [query.data]);
 
@@ -86,6 +92,27 @@ export function RolesAdmin() {
     }
   }
 
+  function openEdit(role: PortalRole) {
+    setEditing(role);
+    setEditDescription(role.description ?? "");
+    setEditSelected([...role.permissions]);
+  }
+
+  async function onUpdate() {
+    if (!editing) return;
+    try {
+      await mutations.update.mutateAsync({
+        id: editing.id,
+        description: editDescription.trim() || undefined,
+        permissions: editSelected,
+      });
+      toast.success("Role updated.");
+      setEditing(null);
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : "Update failed.");
+    }
+  }
+
   async function onToggleActive(id: string, currentlyActive: boolean) {
     try {
       await mutations.setActive.mutateAsync({ id, active: !currentlyActive });
@@ -103,7 +130,13 @@ export function RolesAdmin() {
         actions={
           canManage ? (
             <Dialog open={open} onOpenChange={setOpen}>
-              <DialogTrigger render={<Button><Plus className="size-4" /> Create role</Button>} />
+              <DialogTrigger
+                render={
+                  <Button>
+                    <Plus className="size-4" /> Create role
+                  </Button>
+                }
+              />
               <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
                 <DialogHeader>
                   <DialogTitle>Create role</DialogTitle>
@@ -208,6 +241,12 @@ export function RolesAdmin() {
             <SelectItem value="ALL">All scopes</SelectItem>
           </SelectContent>
         </Select>
+        <Input
+          className="max-w-xs"
+          placeholder="Search roles…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
       </div>
 
       {query.isLoading ? (
@@ -226,7 +265,7 @@ export function RolesAdmin() {
                 <TableHead>Users</TableHead>
                 <TableHead>Permissions</TableHead>
                 <TableHead>Status</TableHead>
-                {canManage && <TableHead className="w-28" />}
+                {canManage && <TableHead className="w-40" />}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -259,7 +298,10 @@ export function RolesAdmin() {
                     <StatusBadge status={role.status} />
                   </TableCell>
                   {canManage && (
-                    <TableCell>
+                    <TableCell className="space-x-1 whitespace-nowrap">
+                      <Button size="sm" variant="outline" onClick={() => openEdit(role)}>
+                        Edit
+                      </Button>
                       <Button
                         size="sm"
                         variant="outline"
@@ -276,6 +318,70 @@ export function RolesAdmin() {
           </Table>
         </div>
       )}
+
+      <Dialog open={Boolean(editing)} onOpenChange={(openState) => !openState && setEditing(null)}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit role — {editing?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Name and scope are immutable after creation.
+            </p>
+            <div className="space-y-1.5">
+              <Label>Scope</Label>
+              <Input value={editing?.scope ?? ""} disabled />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-role-description">Description</Label>
+              <Input
+                id="edit-role-description"
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Permissions</Label>
+              <div className="max-h-56 space-y-2 overflow-y-auto rounded-lg border bg-muted/30 p-3">
+                {(permissions.data ?? []).map((item) => (
+                  <label
+                    key={item.code}
+                    className="flex cursor-pointer items-start gap-2.5 text-sm"
+                  >
+                    <Checkbox
+                      className="mt-0.5"
+                      checked={editSelected.includes(item.code)}
+                      onChange={(e) =>
+                        setEditSelected((current) =>
+                          e.target.checked
+                            ? [...current, item.code]
+                            : current.filter((code) => code !== item.code),
+                        )
+                      }
+                    />
+                    <span>
+                      <span className="font-medium">
+                        {PERMISSION_LABELS[item.code] ?? item.code}
+                      </span>
+                      <span className="mt-0.5 block text-xs text-muted-foreground">
+                        {item.code}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setEditing(null)}>
+                Cancel
+              </Button>
+              <Button onClick={() => void onUpdate()} disabled={mutations.update.isPending}>
+                Save
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {canViewCatalog && (
         <section className="space-y-3">

@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { BrandLogo } from "@/components/layout/BrandLogo";
+import { NotificationBell } from "@/features/notifications/components/NotificationBell";
 
 const iconMap: Record<string, typeof Building2> = {
   "/organizations": Building2,
@@ -150,6 +151,7 @@ export function Topbar() {
       </div>
       {user && (
         <div className="flex items-center gap-3">
+          <NotificationBell />
           <span className="rounded-md border border-border/80 bg-muted/60 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
             {user.roles[0] ?? "Employee"}
           </span>

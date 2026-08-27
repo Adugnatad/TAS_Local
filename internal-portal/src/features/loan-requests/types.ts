@@ -9,20 +9,12 @@ export interface LoanRequest {
   businessType?: string;
   purpose?: string;
   requestRef?: string;
+  evaluationId?: string;
+  matrixEvaluationId?: string;
+  details?: Record<string, unknown>;
   createdAt?: string;
   updatedAt?: string;
   submittedAt?: string;
-  [key: string]: unknown;
-}
-
-export interface LoanPayload {
-  amount: number;
-  currency?: string;
-  productCode?: string;
-  productId?: string;
-  businessType?: string;
-  purpose?: string;
-  requestRef?: string;
   [key: string]: unknown;
 }
 

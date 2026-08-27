@@ -10,6 +10,14 @@ export function useOrgDocuments(orgId: string) {
   });
 }
 
+export function useDocumentTypes() {
+  return useQuery({
+    queryKey: ["document-types"],
+    queryFn: () => api.fetchDocumentTypes(),
+    staleTime: 5 * 60_000,
+  });
+}
+
 export function useUploadOrgDocument(orgId: string) {
   const qc = useQueryClient();
   const invalidate = () => {
@@ -18,7 +26,15 @@ export function useUploadOrgDocument(orgId: string) {
   };
   return {
     upload: useMutation({
-      mutationFn: (file: File) => api.uploadOrgDocument(orgId, file),
+      mutationFn: (input: { file: File; type: string; documentName?: string }) =>
+        api.uploadOrgDocument(orgId, input.file, {
+          type: input.type,
+          documentName: input.documentName,
+        }),
+      onSuccess: invalidate,
+    }),
+    uploadBusinessLicense: useMutation({
+      mutationFn: (file: File) => api.uploadBusinessLicense(orgId, file),
       onSuccess: invalidate,
     }),
     remove: useMutation({

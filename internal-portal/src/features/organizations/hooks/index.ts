@@ -9,4 +9,4 @@ export {
 } from "./useOrganizations";
 export { useOrgUsers, useCreateOrgUser, useOrgUserMutations } from "./useOrgUsers";
 export { useOrgAccounts, useCreateOrgAccount } from "./useOrgAccounts";
-export { useOrgDocuments, useUploadOrgDocument } from "./useOrgDocuments";
+export { useOrgDocuments, useUploadOrgDocument, useDocumentTypes } from "./useOrgDocuments";

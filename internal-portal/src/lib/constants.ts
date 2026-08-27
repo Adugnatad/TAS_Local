@@ -26,10 +26,15 @@ export type PermissionType = (typeof PERMISSION_TYPES)[number];
 export const ROLE_SCOPES = ["EMPLOYEE", "ORGANIZATION"] as const;
 export type RoleScope = (typeof ROLE_SCOPES)[number];
 
-export const APPROVAL_TYPES = ["LOAN_APPLICATION"] as const;
+export const APPROVAL_TYPES = [
+  "LOAN_APPLICATION",
+  "TRADE_REQUEST",
+  "FUND_TRANSFER",
+  "RTGS",
+] as const;
 export const APPROVAL_ACTIONS = ["CREATE"] as const;
 
-export const DOCUMENT_TYPES = ["BUSINESS_LICENSE"] as const;
+export const DOCUMENT_TYPES = ["BUSINESS_LICENSE", "Other"] as const;
 
 export const NAV_ITEMS: Array<{
   href: string;

@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { orgUserUpdateSchema, type OrgUserUpdateFormValues } from "../schemas";
 import { useOrganization, useOrgUserMutations, useOrgUsers } from "../hooks";
-import { formatOrgApiError } from "../tin";
+import { canAddOrgUsers, formatOrgApiError } from "../tin";
 import type { OrganizationUser } from "../types";
 import { useSession } from "@/features/auth/hooks/useSession";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -108,10 +108,12 @@ export function OrganizationUsersPanel({ orgId }: { orgId: string }) {
   const canManage = can("MANAGE_ORGANIZATIONS");
   const [page, setPage] = useState(0);
   const [editing, setEditing] = useState<OrganizationUser | null>(null);
+  const [resetUser, setResetUser] = useState<OrganizationUser | null>(null);
+  const [newPassword, setNewPassword] = useState("");
   const org = useOrganization(orgId);
   const query = useOrgUsers(orgId, { page, size: 20 });
   const mutations = useOrgUserMutations(orgId);
-  const hasCse = Boolean(org.data?.assignedCseUserId);
+  const addUsersGate = canAddOrgUsers(org.data);
 
   const editForm = useForm<OrgUserUpdateFormValues>({
     resolver: zodResolver(orgUserUpdateSchema),
@@ -120,6 +122,9 @@ export function OrganizationUsersPanel({ orgId }: { orgId: string }) {
       firstName: editing?.firstName ?? "",
       lastName: editing?.lastName ?? "",
       phone: editing?.phone ?? "",
+      gender: editing?.gender ?? "",
+      dateOfBirth: editing?.dateOfBirth ?? "",
+      address: editing?.address ?? "",
       role: (editing?.role as "Admin" | "User") || "User",
       permissionType: (editing?.permissionType as "INITIATE" | "APPROVE" | "VIEW") || "VIEW",
     },
@@ -133,6 +138,9 @@ export function OrganizationUsersPanel({ orgId }: { orgId: string }) {
         input: {
           ...values,
           email: values.email || undefined,
+          gender: values.gender || undefined,
+          dateOfBirth: values.dateOfBirth || undefined,
+          address: values.address || undefined,
         },
       });
       toast.success("User updated.");
@@ -142,24 +150,41 @@ export function OrganizationUsersPanel({ orgId }: { orgId: string }) {
     }
   }
 
+  async function onResetPassword() {
+    if (!resetUser) return;
+    if (newPassword.length < 8) {
+      toast.error("Password must be at least 8 characters.");
+      return;
+    }
+    try {
+      await mutations.resetPassword.mutateAsync({
+        userId: resetUser.id,
+        newPassword,
+      });
+      toast.success("Password reset.");
+      setResetUser(null);
+      setNewPassword("");
+    } catch (error) {
+      toast.error(formatOrgApiError(error, "Reset failed."));
+    }
+  }
+
   return (
     <div className="space-y-4">
-      {!hasCse && !org.isLoading && (
+      {!addUsersGate.ok && !org.isLoading && (
         <Alert>
-          <AlertTitle>CSE required</AlertTitle>
-          <AlertDescription>
-            A CSE must be assigned before adding users. Assign one from the organization overview.
-          </AlertDescription>
+          <AlertTitle>Cannot add users yet</AlertTitle>
+          <AlertDescription>{addUsersGate.reason}</AlertDescription>
         </Alert>
       )}
       <div className="flex justify-end">
         {canManage &&
-          (hasCse ? (
+          (addUsersGate.ok ? (
             <Link href={`/organizations/${orgId}/users/new`} className={cn(buttonVariants())}>
               Add user
             </Link>
           ) : (
-            <Button disabled title="A CSE must be assigned before adding users.">
+            <Button disabled title={addUsersGate.reason}>
               Add user
             </Button>
           ))}
@@ -219,15 +244,8 @@ export function OrganizationUsersPanel({ orgId }: { orgId: string }) {
                       size="sm"
                       variant="ghost"
                       onClick={() => {
-                        const newPassword = window.prompt("New password (min 8 characters)");
-                        if (!newPassword || newPassword.length < 8) {
-                          if (newPassword) toast.error("Password must be at least 8 characters.");
-                          return;
-                        }
-                        mutations.resetPassword
-                          .mutateAsync({ userId: user.id, newPassword })
-                          .then(() => toast.success("Password reset."))
-                          .catch((error) => toast.error(formatOrgApiError(error)));
+                        setResetUser(user);
+                        setNewPassword("");
                       }}
                     >
                       Reset password
@@ -299,6 +317,59 @@ export function OrganizationUsersPanel({ orgId }: { orgId: string }) {
                   </FormItem>
                 )}
               />
+              <FormField
+                control={editForm.control}
+                name="gender"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Gender</FormLabel>
+                    <Select
+                      value={field.value || undefined}
+                      onValueChange={(value) => field.onChange(value ?? "")}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Gender" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="MALE">Male</SelectItem>
+                        <SelectItem value="FEMALE">Female</SelectItem>
+                        <SelectItem value="OTHER">Other</SelectItem>
+                        <SelectItem value="M">M</SelectItem>
+                        <SelectItem value="F">F</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="dateOfBirth"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Date of birth</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="address"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Address</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <RolePermissionFields
                 control={editForm.control as unknown as Control<RolePermissionValues>}
               />
@@ -307,6 +378,41 @@ export function OrganizationUsersPanel({ orgId }: { orgId: string }) {
               </Button>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(resetUser)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setResetUser(null);
+            setNewPassword("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset password for {resetUser?.username}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              type="password"
+              placeholder="New password (min 8)"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setResetUser(null)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => void onResetPassword()}
+                disabled={mutations.resetPassword.isPending}
+              >
+                Reset
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 

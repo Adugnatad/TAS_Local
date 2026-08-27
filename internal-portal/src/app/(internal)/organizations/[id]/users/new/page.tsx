@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { orgUserSchema, type OrgUserFormValues } from "@/features/organizations/schemas";
 import { useCreateOrgUser, useOrganization } from "@/features/organizations/hooks";
-import { formatOrgApiError } from "@/features/organizations/tin";
+import { formatOrgApiError, canAddOrgUsers } from "@/features/organizations/tin";
 import { PermissionGuard } from "@/components/layout/RBACGuard";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,7 +73,7 @@ export default function AddOrgUserPage() {
   }
 
   const cancelHref = `/organizations/${id}`;
-  const hasCse = Boolean(org.data?.assignedCseUserId);
+  const addUsersGate = canAddOrgUsers(org.data);
 
   return (
     <PermissionGuard anyOf={["MANAGE_ORGANIZATIONS"]}>
@@ -89,11 +89,11 @@ export default function AddOrgUserPage() {
 
         {org.isLoading ? (
           <Skeleton className="h-40 w-full" />
-        ) : !hasCse ? (
+        ) : !addUsersGate.ok ? (
           <Alert>
-            <AlertTitle>CSE required</AlertTitle>
+            <AlertTitle>Cannot add users yet</AlertTitle>
             <AlertDescription className="space-y-3">
-              <p>A CSE must be assigned before adding users.</p>
+              <p>{addUsersGate.reason}</p>
               <Link href={cancelHref} className={cn(buttonVariants({ size: "sm" }))}>
                 Back to organization
               </Link>

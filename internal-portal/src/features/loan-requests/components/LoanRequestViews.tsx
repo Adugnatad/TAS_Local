@@ -1,49 +1,26 @@
 "use client";
 
-import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { toast } from "sonner";
 import { format, parseISO, isValid } from "date-fns";
-import { useCatalogs, useLoanMutations, useLoanRequest, useLoanRequests } from "../hooks";
-import { useSession } from "@/features/auth/hooks/useSession";
-import { ApiError } from "@/lib/api-client";
-import { formatOrgApiError } from "@/features/organizations/tin";
+import { useLoanRequest, useLoanRequestEnums, useLoanRequests } from "../hooks";
+import { fetchAuthorized, fetchEvaluation } from "@/features/signatory-matrix/api";
+import type { MatrixEvaluation } from "@/features/signatory-matrix/types";
 import { cn } from "@/lib/utils";
 import type { PageResponse } from "@/types/global";
-import type { CatalogOption, LoanRequest } from "../types";
+import type { LoanRequest } from "../types";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { TableSkeleton } from "@/components/shared/TableSkeleton";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -76,39 +53,157 @@ function formatAmount(amount?: number, currency?: string) {
   return currency ? `${formatted} ${currency}` : formatted;
 }
 
-function catalogOptions(raw: unknown): CatalogOption[] {
-  if (!raw) return [];
-  if (Array.isArray(raw)) return raw as CatalogOption[];
-  if (typeof raw === "object") {
-    const obj = raw as Record<string, unknown>;
-    for (const key of ["content", "items", "data", "products", "businessTypes"]) {
-      if (Array.isArray(obj[key])) return obj[key] as CatalogOption[];
+function formatDetailsValue(value: unknown): string {
+  if (value == null) return "—";
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function enumLabel(enums: unknown, field: string, code: string): string {
+  if (!enums || typeof enums !== "object") return code;
+  const catalog = enums as Record<string, unknown>;
+  const options = catalog[field];
+  if (!Array.isArray(options)) return code;
+  for (const item of options) {
+    if (typeof item === "string" && item === code) return code;
+    if (item && typeof item === "object") {
+      const row = item as Record<string, unknown>;
+      const value = String(row.code ?? row.value ?? row.id ?? "");
+      if (value === code) {
+        return String(row.label ?? row.name ?? row.description ?? code);
+      }
     }
   }
-  return [];
+  return code;
 }
 
-function optionLabel(item: CatalogOption) {
-  return item.name || item.label || item.code || item.value || item.id || "Option";
+function LoanMatrixStatus({ orgId, loan }: { orgId: string; loan: LoanRequest }) {
+  const evaluationId =
+    typeof loan.evaluationId === "string"
+      ? loan.evaluationId
+      : typeof loan.matrixEvaluationId === "string"
+        ? loan.matrixEvaluationId
+        : undefined;
+  const requestRef = loan.requestRef;
+
+  const byId = useQuery({
+    queryKey: ["matrix-evaluation", orgId, evaluationId],
+    queryFn: () => fetchEvaluation(orgId, evaluationId!),
+    enabled: Boolean(orgId && evaluationId),
+  });
+
+  const byRef = useQuery({
+    queryKey: ["matrix-authorized", orgId, requestRef],
+    queryFn: () => fetchAuthorized(orgId, requestRef!) as Promise<MatrixEvaluation>,
+    enabled: Boolean(orgId && requestRef && !evaluationId),
+  });
+
+  const query = evaluationId ? byId : byRef;
+  const evaluation = query.data as MatrixEvaluation | undefined;
+
+  if (!evaluationId && !requestRef) {
+    return (
+      <Card className="shadow-sm">
+        <CardHeader className="border-b">
+          <CardTitle className="text-base">Signatory matrix</CardTitle>
+          <CardDescription>
+            No request reference or evaluation id on this loan — matrix status unavailable.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  if (query.isLoading) {
+    return (
+      <Card className="shadow-sm">
+        <CardHeader className="border-b">
+          <CardTitle className="text-base">Signatory matrix</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-5 text-sm text-muted-foreground">Loading…</CardContent>
+      </Card>
+    );
+  }
+
+  if (query.isError) {
+    return (
+      <Card className="shadow-sm">
+        <CardHeader className="border-b">
+          <CardTitle className="text-base">Signatory matrix</CardTitle>
+          <CardDescription>Could not load matrix evaluation for this request.</CardDescription>
+        </CardHeader>
+        <CardContent className="pt-5">
+          <ErrorState onRetry={() => query.refetch()} />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const status = evaluation?.result || evaluation?.status;
+  const signatories = evaluation?.requiredSignatories ?? [];
+
+  return (
+    <Card className="shadow-sm">
+      <CardHeader className="border-b">
+        <CardTitle className="text-base">Signatory matrix</CardTitle>
+        <CardDescription>
+          Read-only oversight. Approvals are performed by organization signatories, not bank staff.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4 pt-5">
+        <dl className="grid gap-x-8 gap-y-3 sm:grid-cols-2">
+          <div className="grid grid-cols-[130px_1fr] gap-2 text-sm">
+            <dt className="text-muted-foreground">Result</dt>
+            <dd className="font-medium">
+              {status ? <StatusBadge status={String(status)} /> : "—"}
+            </dd>
+          </div>
+          <div className="grid grid-cols-[130px_1fr] gap-2 text-sm">
+            <dt className="text-muted-foreground">Authorized</dt>
+            <dd className="font-medium">
+              {evaluation?.authorized == null ? "—" : evaluation.authorized ? "Yes" : "No"}
+            </dd>
+          </div>
+          <div className="grid grid-cols-[130px_1fr] gap-2 text-sm">
+            <dt className="text-muted-foreground">Approval type</dt>
+            <dd className="font-medium">{evaluation?.approvalType || "—"}</dd>
+          </div>
+          <div className="grid grid-cols-[130px_1fr] gap-2 text-sm">
+            <dt className="text-muted-foreground">Matched rule</dt>
+            <dd className="font-medium break-all">{evaluation?.matchedRuleId || "—"}</dd>
+          </div>
+        </dl>
+        {evaluation?.message && (
+          <p className="text-sm text-muted-foreground">{String(evaluation.message)}</p>
+        )}
+        {signatories.length > 0 && (
+          <div>
+            <p className="mb-2 text-sm font-medium">Required signatories</p>
+            <ul className="space-y-1 text-sm text-muted-foreground">
+              {signatories.map((s, index) => (
+                <li key={s.userId ?? `${index}`}>
+                  {[s.firstName, s.lastName].filter(Boolean).join(" ") ||
+                    s.username ||
+                    s.userId ||
+                    `Signatory ${index + 1}`}
+                  {s.order != null ? ` (#${s.order})` : ""}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
-
-function optionValue(item: CatalogOption) {
-  return item.code || item.value || item.id || item.name || "";
-}
-
-const loanFormSchema = z.object({
-  amount: z.coerce.number().positive("Amount must be greater than 0"),
-  currency: z.string().min(1, "Currency is required"),
-  productCode: z.string().optional(),
-  businessType: z.string().optional(),
-  purpose: z.string().optional(),
-  requestRef: z.string().optional(),
-});
-
-type LoanFormValues = z.infer<typeof loanFormSchema>;
 
 export function LoanRequestList({ orgId }: { orgId: string }) {
-  const { can } = useSession();
   const query = useLoanRequests(orgId, { page: 0, size: 20 });
   const items = asList(query.data);
 
@@ -117,15 +212,11 @@ export function LoanRequestList({ orgId }: { orgId: string }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        {can("MANAGE_ORGANIZATIONS") && (
-          <Link href={`/organizations/${orgId}/loans/new`} className={cn(buttonVariants())}>
-            Create loan request
-          </Link>
-        )}
-      </div>
       {!items.length ? (
-        <EmptyState title="No loan requests" description="Create a loan request to get started." />
+        <EmptyState
+          title="No loan requests"
+          description="Loan requests are created by organization users in the customer portal."
+        />
       ) : (
         <div className="overflow-x-auto rounded-lg border">
           <Table>
@@ -176,27 +267,18 @@ export function LoanRequestList({ orgId }: { orgId: string }) {
 }
 
 export function LoanRequestDetail({ orgId, loanId }: { orgId: string; loanId: string }) {
-  const { can } = useSession();
   const query = useLoanRequest(orgId, loanId);
-  const mutations = useLoanMutations(orgId);
-
-  async function onSubmit() {
-    try {
-      const result = await mutations.submit.mutateAsync(loanId);
-      toast.success("Submitted to CoopStream.");
-      if (result.coopStreamStatus) {
-        toast.message(`CoopStream: ${String(result.coopStreamStatus)}`);
-      }
-      await query.refetch();
-    } catch (error) {
-      toast.error(formatOrgApiError(error, "Submit failed."));
-    }
-  }
+  const enums = useLoanRequestEnums();
 
   if (query.isLoading) return <TableSkeleton rows={6} />;
   if (query.isError || !query.data) return <ErrorState onRetry={() => query.refetch()} />;
 
   const loan = query.data;
+  const details =
+    loan.details && typeof loan.details === "object"
+      ? (loan.details as Record<string, unknown>)
+      : null;
+
   const rows: Array<{ label: string; value: React.ReactNode }> = [
     { label: "Request ID", value: loan.id },
     { label: "Request ref", value: loan.requestRef || "—" },
@@ -225,16 +307,11 @@ export function LoanRequestDetail({ orgId, loanId }: { orgId: string; loanId: st
   return (
     <div className="space-y-4">
       <Card className="shadow-sm">
-        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 border-b">
+        <CardHeader className="border-b">
           <div>
             <CardTitle>Loan request</CardTitle>
             <CardDescription className="mt-1 font-mono text-xs">{loan.id}</CardDescription>
           </div>
-          {can("MANAGE_ORGANIZATIONS") && (
-            <Button onClick={() => void onSubmit()} disabled={mutations.submit.isPending}>
-              Submit to CoopStream
-            </Button>
-          )}
         </CardHeader>
         <CardContent className="pt-5">
           <dl className="grid gap-x-8 gap-y-3 sm:grid-cols-2">
@@ -245,8 +322,28 @@ export function LoanRequestDetail({ orgId, loanId }: { orgId: string; loanId: st
               </div>
             ))}
           </dl>
+          {details && Object.keys(details).length > 0 && (
+            <div className="mt-6 border-t pt-4">
+              <p className="mb-3 text-sm font-medium">Details</p>
+              <dl className="grid gap-x-8 gap-y-3 sm:grid-cols-2">
+                {Object.entries(details).map(([key, value]) => (
+                  <div key={key} className="grid grid-cols-[130px_1fr] gap-2 text-sm">
+                    <dt className="text-muted-foreground">{key}</dt>
+                    <dd className="font-medium break-all">
+                      {typeof value === "string"
+                        ? enumLabel(enums.data, key, value)
+                        : formatDetailsValue(value)}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      <LoanMatrixStatus orgId={orgId} loan={loan} />
+
       <Link
         href={`/organizations/${orgId}/loans`}
         className={cn(buttonVariants({ variant: "outline" }))}
@@ -254,206 +351,5 @@ export function LoanRequestDetail({ orgId, loanId }: { orgId: string; loanId: st
         Back to list
       </Link>
     </div>
-  );
-}
-
-export function LoanRequestCreate({ orgId }: { orgId: string }) {
-  const router = useRouter();
-  const mutations = useLoanMutations(orgId);
-  const catalogs = useCatalogs();
-
-  const products = useMemo(
-    () => catalogOptions(catalogs.data?.products),
-    [catalogs.data?.products],
-  );
-  const businessTypes = useMemo(
-    () => catalogOptions(catalogs.data?.businessTypes),
-    [catalogs.data?.businessTypes],
-  );
-
-  const form = useForm<LoanFormValues>({
-    resolver: zodResolver(loanFormSchema),
-    defaultValues: {
-      amount: 0,
-      currency: "ETB",
-      productCode: "",
-      businessType: "",
-      purpose: "",
-      requestRef: "",
-    },
-  });
-
-  async function onSubmit(values: LoanFormValues) {
-    try {
-      const created = await mutations.create.mutateAsync({
-        amount: values.amount,
-        currency: values.currency,
-        productCode: values.productCode || undefined,
-        businessType: values.businessType || undefined,
-        purpose: values.purpose || undefined,
-        requestRef: values.requestRef || undefined,
-      });
-      toast.success("Loan request created.");
-      router.push(`/organizations/${orgId}/loans/${created.id}`);
-    } catch (error) {
-      const apiError = error instanceof ApiError ? error : null;
-      toast.error(apiError?.message ?? "Create failed.");
-      if (apiError?.fieldErrors?.length) {
-        toast.message(apiError.fieldErrors.map((f) => `${f.field}: ${f.message}`).join(" · "));
-      }
-    }
-  }
-
-  return (
-    <Card className="max-w-2xl shadow-sm">
-      <CardHeader className="border-b">
-        <CardTitle>Create loan request</CardTitle>
-        <CardDescription>
-          Draft requests can be created before TIN validation. Submit requires a validated
-          organization.
-        </CardDescription>
-      </CardHeader>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-          <CardContent className="grid gap-4 pt-5 sm:grid-cols-2">
-            <FormField
-              control={form.control}
-              name="amount"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Amount</FormLabel>
-                  <FormControl>
-                    <Input type="number" min={0} step="0.01" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="currency"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Currency</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="productCode"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Product</FormLabel>
-                  {products.length ? (
-                    <Select
-                      value={field.value || undefined}
-                      onValueChange={(value) => field.onChange(value ?? "")}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select product" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {products.map((item) => {
-                          const value = optionValue(item);
-                          return (
-                            <SelectItem key={value} value={value}>
-                              {optionLabel(item)}
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <FormControl>
-                      <Input placeholder="Product code" {...field} />
-                    </FormControl>
-                  )}
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="businessType"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Business type</FormLabel>
-                  {businessTypes.length ? (
-                    <Select
-                      value={field.value || undefined}
-                      onValueChange={(value) => field.onChange(value ?? "")}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select business type" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {businessTypes.map((item) => {
-                          const value = optionValue(item);
-                          return (
-                            <SelectItem key={value} value={value}>
-                              {optionLabel(item)}
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <FormControl>
-                      <Input placeholder="Business type" {...field} />
-                    </FormControl>
-                  )}
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="requestRef"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Request reference</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Optional" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="purpose"
-              render={({ field }) => (
-                <FormItem className="sm:col-span-2">
-                  <FormLabel>Purpose</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Optional" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </CardContent>
-          <CardFooter className="justify-end gap-2 border-t">
-            <Link
-              href={`/organizations/${orgId}/loans`}
-              className={cn(buttonVariants({ variant: "outline" }))}
-            >
-              Cancel
-            </Link>
-            <Button type="submit" disabled={mutations.create.isPending}>
-              Create
-            </Button>
-          </CardFooter>
-        </form>
-      </Form>
-    </Card>
   );
 }

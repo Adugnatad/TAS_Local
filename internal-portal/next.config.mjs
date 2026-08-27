@@ -9,6 +9,11 @@ const nextConfig = {
         source: "/portal-api/:path*",
         destination: `${portalCore}/api/v1/:path*`,
       },
+      // STOMP / WebSocket notifications
+      {
+        source: "/ws",
+        destination: `${portalCore}/ws`,
+      },
     ];
   },
 };

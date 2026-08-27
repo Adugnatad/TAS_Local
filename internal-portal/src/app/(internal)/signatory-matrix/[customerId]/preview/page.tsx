@@ -5,5 +5,5 @@ export default function SignatoryPreviewLegacyRedirect({
 }: {
   params: { customerId: string };
 }) {
-  redirect(`/organizations/${params.customerId}/signatory/evaluate`);
+  redirect(`/organizations/${params.customerId}/signatory/groups`);
 }

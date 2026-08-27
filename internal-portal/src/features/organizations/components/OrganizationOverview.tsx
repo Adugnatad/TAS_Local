@@ -12,7 +12,7 @@ import {
   useOrgUsers,
   useOrgUserMutations,
 } from "../hooks";
-import { formatOrgApiError, tinVerificationLabel } from "../tin";
+import { formatOrgApiError, tinVerificationLabel, canAddOrgUsers } from "../tin";
 import { useEmployees } from "@/features/employees/hooks";
 import { useSession } from "@/features/auth/hooks/useSession";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -118,12 +118,14 @@ export function OrganizationOverview({ orgId }: { orgId: string }) {
 
   const org = query.data;
   const hasCse = Boolean(org.assignedCseUserId);
+  const addUsersGate = canAddOrgUsers(org);
   const tin = tinVerificationLabel(org);
   const infoRows: Array<{ label: string; value: React.ReactNode }> = [
     { label: "Customer ID", value: org.cbsCustomerId || org.crmSystemId || org.tin || "—" },
     { label: "TIN", value: org.tin ?? "—" },
     { label: "Phone", value: org.phone ?? "—" },
     { label: "Address", value: org.address ?? "—" },
+    { label: "Description", value: org.description ?? "—" },
     { label: "CRM ID", value: org.crmSystemId ?? "—" },
     { label: "CBS ID", value: org.cbsCustomerId ?? "—" },
     {
@@ -162,10 +164,11 @@ export function OrganizationOverview({ orgId }: { orgId: string }) {
 
       {org.tinValidationStatus !== "VALIDATED" && (
         <Alert>
-          <AlertTitle>TIN not verified for CoopStream</AlertTitle>
+          <AlertTitle>Organization not validated</AlertTitle>
           <AlertDescription>
-            Loan requests can be created, but submit returns ORG_NOT_VERIFIED until verify-tin or
-            team verification succeeds.
+            Users cannot be added until TIN is validated. Loan submit also stays blocked
+            (ORG_NOT_VERIFIED) until verify-tin or team verification succeeds.
+            {org.tinValidationReason ? ` ${org.tinValidationReason}` : ""}
           </AlertDescription>
         </Alert>
       )}
@@ -236,8 +239,11 @@ export function OrganizationOverview({ orgId }: { orgId: string }) {
             </div>
           ))}
         </div>
+        {org.tinValidationReason && (
+          <p className="mt-3 text-sm text-muted-foreground">{org.tinValidationReason}</p>
+        )}
         {(org.tinEnteredName || org.tinRegisteredName) && (
-          <div className="mt-4 rounded-md border bg-muted/40 p-3 text-xs space-y-1">
+          <div className="mt-4 space-y-1 rounded-md border bg-muted/40 p-3 text-xs">
             <p>
               Entered name: <span className="font-medium">{org.tinEnteredName ?? "—"}</span>
             </p>
@@ -259,7 +265,7 @@ export function OrganizationOverview({ orgId }: { orgId: string }) {
         <div className="mb-3 flex items-center justify-between gap-2">
           <SectionTitle>Contract Users</SectionTitle>
           {canManage &&
-            (hasCse ? (
+            (addUsersGate.ok ? (
               <Link
                 href={`/organizations/${orgId}/users/new`}
                 className={cn(buttonVariants({ size: "sm" }))}
@@ -267,15 +273,13 @@ export function OrganizationOverview({ orgId }: { orgId: string }) {
                 Add user
               </Link>
             ) : (
-              <Button size="sm" disabled title="A CSE must be assigned before adding users.">
+              <Button size="sm" disabled title={addUsersGate.reason}>
                 Add user
               </Button>
             ))}
         </div>
-        {!hasCse && (
-          <p className="mb-3 text-sm text-muted-foreground">
-            A CSE must be assigned before adding users.
-          </p>
+        {!addUsersGate.ok && (
+          <p className="mb-3 text-sm text-muted-foreground">{addUsersGate.reason}</p>
         )}
         {users.isLoading ? (
           <TableSkeleton rows={4} />

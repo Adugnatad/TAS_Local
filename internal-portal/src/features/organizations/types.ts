@@ -11,8 +11,15 @@ export interface OrgAccount {
 export interface OrgDocument {
   id: string;
   type?: string;
+  docType?: string;
+  documentName?: string | null;
   fileName?: string;
   validationStatus?: ValidationStatus;
+}
+
+export interface DocumentTypeOption {
+  code: string;
+  label: string;
 }
 
 export interface OrganizationSummary {
@@ -90,6 +97,9 @@ export interface OrganizationUser {
   firstName: string | null;
   lastName: string | null;
   phone: string | null;
+  gender?: string | null;
+  dateOfBirth?: string | null;
+  address?: string | null;
   role: OrgUserRole | string;
   permissionType: PermissionType | string;
   status: string;

@@ -17,10 +17,9 @@ import {
   Ban,
   CircleSlash,
   LayoutDashboard,
-  FlaskConical,
 } from "lucide-react";
 import { useOrganization, useOrgLifecycle } from "../hooks";
-import { formatOrgApiError } from "../tin";
+import { canAddOrgUsers, formatOrgApiError } from "../tin";
 import { useSession } from "@/features/auth/hooks/useSession";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { cn } from "@/lib/utils";
@@ -33,6 +32,8 @@ type NavLink = {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   match?: "exact" | "prefix";
+  disabled?: boolean;
+  disabledReason?: string;
 };
 
 export function ContractDetailShell({
@@ -49,6 +50,7 @@ export function ContractDetailShell({
   const canSignatory = can("MANAGE_SIGNATORY_ANY");
   const { data: org, isLoading } = useOrganization(orgId);
   const lifecycle = useOrgLifecycle(orgId);
+  const addUsersGate = canAddOrgUsers(org);
 
   async function run(action: () => Promise<unknown>, ok: string, redirectToList = false) {
     try {
@@ -80,6 +82,8 @@ export function ContractDetailShell({
             label: "Add user",
             icon: UserPlus,
             match: "exact" as const,
+            disabled: !addUsersGate.ok,
+            disabledReason: addUsersGate.reason,
           },
         ]
       : []),
@@ -95,12 +99,6 @@ export function ContractDetailShell({
             href: `/organizations/${orgId}/signatory/rules`,
             label: "Approval rules",
             icon: ShieldCheck,
-            match: "exact" as const,
-          },
-          {
-            href: `/organizations/${orgId}/signatory/evaluate`,
-            label: "Evaluate",
-            icon: FlaskConical,
             match: "exact" as const,
           },
         ]
@@ -179,6 +177,18 @@ export function ContractDetailShell({
             {links.map((item) => {
               const Icon = item.icon;
               const active = isActive(item);
+              if (item.disabled) {
+                return (
+                  <span
+                    key={item.href}
+                    title={item.disabledReason}
+                    className="flex cursor-not-allowed items-center gap-2 rounded-md border-l-2 border-transparent px-3 py-2 text-sm text-muted-foreground/60"
+                  >
+                    <Icon className="size-4 shrink-0" />
+                    {item.label}
+                  </span>
+                );
+              }
               return (
                 <Link
                   key={item.href}

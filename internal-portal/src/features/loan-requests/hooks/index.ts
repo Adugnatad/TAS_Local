@@ -3,5 +3,5 @@ export {
   useLoanRequests,
   useLoanRequest,
   useCatalogs,
-  useLoanMutations,
+  useLoanRequestEnums,
 } from "./useLoanRequests";

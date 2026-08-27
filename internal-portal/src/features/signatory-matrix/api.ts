@@ -128,17 +128,18 @@ export async function setRuleActive(
   );
 }
 
-export async function evaluateMatrix(
-  orgId: string,
-  input: { approvalType: string; approvalAction: string; amount: number; requestRef?: string },
-): Promise<MatrixEvaluation> {
-  return apiClient(`${base(orgId)}/matrix/evaluate`, { method: "POST", body: input });
-}
-
 export async function fetchEvaluation(orgId: string, evaluationId: string): Promise<MatrixEvaluation> {
   return apiClient(`${base(orgId)}/matrix/evaluations/${evaluationId}`);
 }
 
-export async function fetchAuthorized(orgId: string, requestRef: string): Promise<unknown> {
+export async function fetchAuthorized(orgId: string, requestRef: string): Promise<MatrixEvaluation> {
   return apiClient(`${base(orgId)}/matrix/authorized`, { params: { requestRef } });
+}
+
+export async function fetchApprovalTypes(): Promise<Array<string | { code?: string; label?: string; name?: string; value?: string }>> {
+  const data = await apiClient<
+    | Array<string | { code?: string; label?: string; name?: string; value?: string }>
+    | { content: Array<string | { code?: string; label?: string; name?: string; value?: string }> }
+  >("/approval-types");
+  return Array.isArray(data) ? data : data.content;
 }

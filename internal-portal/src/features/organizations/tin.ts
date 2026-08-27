@@ -19,6 +19,26 @@ export function tinVerificationLabel(
   return { status: status || "PENDING", label: "Not verified" };
 }
 
+export function canAddOrgUsers(
+  org:
+    | Pick<OrganizationDetail, "assignedCseUserId" | "tinValidationStatus">
+    | null
+    | undefined,
+): { ok: boolean; reason?: string } {
+  if (!org) return { ok: false, reason: "Organization is still loading." };
+  if (!org.assignedCseUserId) {
+    return { ok: false, reason: "A CSE must be assigned before adding users." };
+  }
+  if (org.tinValidationStatus !== "VALIDATED") {
+    return {
+      ok: false,
+      reason:
+        "Organization TIN must be validated (verify-tin or team verification) before adding users.",
+    };
+  }
+  return { ok: true };
+}
+
 export function formatOrgApiError(error: unknown, fallback = "Request failed."): string {
   if (!(error instanceof ApiError)) return fallback;
   if (error.code === "ORG_NAME_EXISTS") return "An organization with this name already exists.";
@@ -26,6 +46,9 @@ export function formatOrgApiError(error: unknown, fallback = "Request failed."):
   if (error.code === "ORG_PHONE_EXISTS") return "An organization with this phone already exists.";
   if (error.code === "ORG_NOT_VERIFIED") {
     return "TIN is not verified. Run verify-tin or team verification before submitting to CoopStream.";
+  }
+  if (error.code === "ORG_NOT_VALIDATED") {
+    return "Organization is not validated yet. Verify the TIN (and business license) before adding users.";
   }
   if (error.code === "ORG_CSE_REQUIRED") {
     return "A CSE must be assigned before adding users.";
@@ -35,6 +58,13 @@ export function formatOrgApiError(error: unknown, fallback = "Request failed."):
   if (error.code === "TERMINATED") return "Cannot assign a CSE to a terminated organization.";
   if (error.code === "CRM_ID_REQUIRED") return "CRM system ID is required for BankCSE employees.";
   if (error.code === "CRM_ID_EXISTS") return "This CRM system ID is already in use.";
+  if (error.code === "DOCUMENT_TYPE_REQUIRED") return "Document type is required.";
+  if (error.code === "UNKNOWN_DOCUMENT_TYPE") return "Unknown document type.";
+  if (error.code === "DOCUMENT_NAME_REQUIRED") {
+    return "Document name is required when type is Other.";
+  }
+  if (error.code === "UNSUPPORTED_TYPE") return "Unsupported file type.";
+  if (error.code === "FILE_TOO_LARGE") return "File is too large.";
+  if (error.code === "EMPTY_FILE") return "File is empty.";
   return error.message;
 }
-
