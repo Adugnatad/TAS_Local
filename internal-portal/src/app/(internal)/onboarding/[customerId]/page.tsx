@@ -1,36 +1,9 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { useParams } from "next/navigation";
-import { OrganizationForm } from "@/features/onboarding/components/CustomerForm";
-import { useCustomer } from "@/features/onboarding/hooks/useCustomers";
-import { Breadcrumbs } from "@/components/layout/PageHeader";
-import { ErrorState } from "@/components/shared/ErrorState";
-import { Skeleton } from "@/components/ui/skeleton";
-
-export default function CustomerDetailPage() {
-  const params = useParams();
-  const customerId = String(params.customerId);
-  const isNew = customerId === "new";
-
-  const { data: customer, isLoading, isError, refetch } = useCustomer(isNew ? "" : customerId);
-
-  return (
-    <div className="space-y-6">
-      <Breadcrumbs
-        items={[
-          { label: "Onboarding", href: "/onboarding" },
-          { label: isNew ? "New Organization" : (customer?.name ?? customerId) },
-        ]}
-      />
-      {isNew && <OrganizationForm />}
-      {!isNew && isLoading && (
-        <div className="space-y-4">
-          <Skeleton className="h-8 w-64" />
-          <Skeleton className="h-48 w-full" />
-        </div>
-      )}
-      {!isNew && isError && <ErrorState onRetry={() => refetch()} />}
-      {!isNew && customer && <OrganizationForm organization={customer} />}
-    </div>
-  );
+export default function OnboardingDetailRedirect({
+  params,
+}: {
+  params: { customerId: string };
+}) {
+  redirect(`/organizations/${params.customerId}`);
 }

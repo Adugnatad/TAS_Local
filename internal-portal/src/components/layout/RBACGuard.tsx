@@ -4,26 +4,24 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ShieldAlert } from "lucide-react";
 import { useSession } from "@/features/auth/hooks/useSession";
-import type { OfficerRole } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 
-interface RBACGuardProps {
-  allowedRoles: OfficerRole[];
+interface PermissionGuardProps {
+  anyOf?: readonly string[];
   children: React.ReactNode;
   fallback?: React.ReactNode;
   redirectTo?: string;
 }
 
-export function RBACGuard({
-  allowedRoles,
+export function PermissionGuard({
+  anyOf,
   children,
   fallback,
   redirectTo,
-}: RBACGuardProps) {
-  const { user, isAuthenticated } = useSession();
+}: PermissionGuardProps) {
+  const { user, isAuthenticated, canAny } = useSession();
   const router = useRouter();
-
-  const isAllowed = isAuthenticated && user && allowedRoles.includes(user.role);
+  const isAllowed = !anyOf || anyOf.length === 0 || canAny(...anyOf);
 
   useEffect(() => {
     if (!isAuthenticated && redirectTo) {
@@ -35,7 +33,7 @@ export function RBACGuard({
     return null;
   }
 
-  if (!isAllowed) {
+  if (!isAllowed || user?.userType !== "EMPLOYEE") {
     if (fallback) return <>{fallback}</>;
     return (
       <div className="flex flex-col items-center justify-center gap-4 p-12 text-center">
@@ -43,11 +41,11 @@ export function RBACGuard({
         <div>
           <h2 className="text-xl font-semibold">Not authorized</h2>
           <p className="mt-2 text-muted-foreground">
-            Your role does not have permission to access this section.
+            You do not have permission to access this section.
           </p>
         </div>
-        <Button variant="outline" onClick={() => router.push("/status")}>
-          Go to Status Viewer
+        <Button variant="outline" onClick={() => router.push("/organizations")}>
+          Go to Organizations
         </Button>
       </div>
     );
@@ -56,13 +54,14 @@ export function RBACGuard({
   return <>{children}</>;
 }
 
-interface RoleGateProps {
-  allowedRoles: OfficerRole[];
+export function PermissionGate({
+  anyOf,
+  children,
+}: {
+  anyOf: readonly string[];
   children: React.ReactNode;
-}
-
-export function RoleGate({ allowedRoles, children }: RoleGateProps) {
-  const { user } = useSession();
-  if (!user || !allowedRoles.includes(user.role)) return null;
+}) {
+  const { canAny } = useSession();
+  if (!canAny(...anyOf)) return null;
   return <>{children}</>;
 }

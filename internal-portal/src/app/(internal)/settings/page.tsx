@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function SettingsIndexPage() {
-  redirect("/settings/signatory");
+export default function SettingsRedirect() {
+  redirect("/roles");
 }

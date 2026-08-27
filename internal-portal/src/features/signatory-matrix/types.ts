@@ -1,63 +1,47 @@
-export type RoleMatch = "all" | "any";
-
-export interface Signatory {
-  id: string;
-  customerId: string;
-  fullName: string;
-  role: string;
-  signatureLimit: number;
-  isActive: boolean;
-}
-
-export interface SignatoryRule {
-  id: string;
-  customerId: string;
-  minSignatories: number;
-  maxSignatories?: number;
-  requiredRoles?: string[];
-  roleMatch: RoleMatch;
-  dualControl: boolean;
-  amountThreshold: number;
-}
-
-export interface SignatoryTitle {
+export interface SignatoryGroup {
   id: string;
   name: string;
-  isActive: boolean;
+  description?: string | null;
+  status?: string;
 }
 
-export interface CreateSignatoryInput {
-  fullName: string;
-  role: string;
-  signatureLimit: number;
-  isActive?: boolean;
+export interface SignatoryMember {
+  id: string;
+  userId: string;
+  username?: string;
+  firstName?: string;
+  lastName?: string;
+  order?: number;
 }
 
-export type UpdateSignatoryInput = Partial<CreateSignatoryInput>;
-
-export interface CreateSignatoryRuleInput {
-  minSignatories: number;
-  maxSignatories?: number;
-  requiredRoles?: string[];
-  roleMatch: RoleMatch;
-  dualControl: boolean;
-  amountThreshold: number;
+export interface ApprovalRule {
+  id: string;
+  approvalType: string;
+  approvalAction: string;
+  minAmount: number;
+  maxAmount: number;
+  signatoryGroupId: string;
+  status?: string;
 }
 
-export type UpdateSignatoryRuleInput = Partial<CreateSignatoryRuleInput>;
-
-export interface MatrixPreviewInput {
-  amount: number;
-}
-
-export interface MatrixPreviewResult {
-  amount: number;
-  applicableRules: SignatoryRule[];
-  validCombinations: Array<{
-    signatories: Signatory[];
-    satisfiesRules: boolean;
-    reason?: string;
+export interface MatrixEvaluation {
+  id?: string;
+  result?: string;
+  status?: string;
+  authorized?: boolean;
+  amount?: number;
+  approvalType?: string;
+  approvalAction?: string;
+  requestRef?: string;
+  matchedRuleId?: string;
+  signatoryGroupId?: string;
+  message?: string;
+  requiredSignatories?: Array<{
+    userId?: string;
+    username?: string;
+    firstName?: string;
+    lastName?: string;
+    order?: number;
   }>;
-  canApprove: boolean;
-  summary: string;
+  [key: string]: unknown;
 }

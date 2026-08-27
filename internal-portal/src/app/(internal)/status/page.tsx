@@ -1,5 +1,5 @@
-import { RequestListView } from "@/features/status-viewer/components/RequestListView";
+import { redirect } from "next/navigation";
 
-export default function StatusPage() {
-  return <RequestListView />;
+export default function StatusRedirect() {
+  redirect("/organizations");
 }

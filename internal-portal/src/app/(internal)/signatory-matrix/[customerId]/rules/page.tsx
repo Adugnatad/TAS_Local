@@ -1,9 +1,9 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { useParams } from "next/navigation";
-import { SignatoryRulesList } from "@/features/signatory-matrix/components/SignatoryRulesList";
-
-export default function RulesPage() {
-  const params = useParams();
-  return <SignatoryRulesList customerId={String(params.customerId)} />;
+export default function SignatoryRulesLegacyRedirect({
+  params,
+}: {
+  params: { customerId: string };
+}) {
+  redirect(`/organizations/${params.customerId}/signatory/rules`);
 }

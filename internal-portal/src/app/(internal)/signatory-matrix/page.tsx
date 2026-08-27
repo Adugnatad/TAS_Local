@@ -1,5 +1,5 @@
-import { SignatoryMatrixCustomerPicker } from "@/features/signatory-matrix/components/SignatoryMatrixCustomerPicker";
+import { redirect } from "next/navigation";
 
-export default function SignatoryMatrixPage() {
-  return <SignatoryMatrixCustomerPicker />;
+export default function SignatoryPickerRedirect() {
+  redirect("/organizations");
 }

@@ -1,35 +1,35 @@
 import { describe, expect, it } from "vitest";
-import { customerProfileSchema } from "@/features/onboarding/schemas";
+import { z } from "zod";
+import { orgFormSchema } from "@/features/organizations/schemas";
 
-describe("customerProfileSchema", () => {
-  it("validates a correct customer profile", () => {
-    const result = customerProfileSchema.safeParse({
-      name: "Acme Corp",
-      address: "1 Corporate Avenue",
-      phone: "+63 917 555 0100",
-      accounts: [{ accountNumber: "001-123", isPrimary: true }],
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it("requires exactly one primary account", () => {
-    const result = customerProfileSchema.safeParse({
-      name: "Acme Corp",
-      address: "1 Corporate Avenue",
-      phone: "+63 917 555 0100",
-      accounts: [{ accountNumber: "001-123", isPrimary: false }],
-    });
+describe("orgFormSchema", () => {
+  it("requires a name", () => {
+    const result = orgFormSchema.safeParse({ name: "" });
     expect(result.success).toBe(false);
   });
 
-  it("does not block an invalid optional TIN", () => {
-    const result = customerProfileSchema.safeParse({
-      name: "Acme Corp",
-      address: "1 Corporate Avenue",
-      phone: "+63 917 555 0100",
-      tin: "not-yet-available",
-      accounts: [{ accountNumber: "001-123", isPrimary: true }],
+  it("accepts a valid organization payload", () => {
+    const result = orgFormSchema.safeParse({
+      name: "Acme Trading PLC",
+      tin: "1234567890",
     });
     expect(result.success).toBe(true);
+  });
+});
+
+describe("login schema shape", () => {
+  const loginSchema = z.object({
+    username: z.string().min(1),
+    password: z.string().min(1),
+  });
+
+  it("rejects empty credentials", () => {
+    expect(loginSchema.safeParse({ username: "", password: "" }).success).toBe(false);
+  });
+
+  it("accepts username and password", () => {
+    expect(
+      loginSchema.safeParse({ username: "admin", password: "ChangeMe123!" }).success,
+    ).toBe(true);
   });
 });

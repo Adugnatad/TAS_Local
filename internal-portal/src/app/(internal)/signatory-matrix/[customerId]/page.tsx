@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 
-export default function CustomerMatrixIndexPage({
+export default function SignatoryCustomerRedirect({
   params,
 }: {
   params: { customerId: string };
 }) {
-  redirect(`/signatory-matrix/${params.customerId}/signatories`);
+  redirect(`/organizations/${params.customerId}/signatory/groups`);
 }

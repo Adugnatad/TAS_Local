@@ -1,7 +1,5 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { SignatoryTitleSettings } from "@/features/settings/components/SignatoryTitleSettings";
-
-export default function SignatorySettingsPage() {
-  return <SignatoryTitleSettings />;
+export default function SettingsSignatoryRedirect() {
+  redirect("/organizations");
 }

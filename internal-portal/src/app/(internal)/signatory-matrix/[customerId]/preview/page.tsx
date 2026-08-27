@@ -1,9 +1,9 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { useParams } from "next/navigation";
-import { MatrixPreview } from "@/features/signatory-matrix/components/MatrixPreview";
-
-export default function PreviewPage() {
-  const params = useParams();
-  return <MatrixPreview customerId={String(params.customerId)} />;
+export default function SignatoryPreviewLegacyRedirect({
+  params,
+}: {
+  params: { customerId: string };
+}) {
+  redirect(`/organizations/${params.customerId}/signatory/evaluate`);
 }

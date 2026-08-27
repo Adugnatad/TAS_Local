@@ -1,100 +1,51 @@
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "/api";
 
-export const OFFICER_ROLES = ["officer", "supervisor", "admin"] as const;
-export type OfficerRole = (typeof OFFICER_ROLES)[number];
-
-export const ONBOARDING_STATUSES = ["draft", "pending_review", "approved", "rejected"] as const;
-export type OnboardingStatus = (typeof ONBOARDING_STATUSES)[number];
-
-export const REQUEST_TYPES = ["loan", "trade"] as const;
-export type RequestType = (typeof REQUEST_TYPES)[number];
-
-export const REQUEST_STATUSES = ["in_progress", "completed", "rejected", "on_hold"] as const;
-export type RequestStatus = (typeof REQUEST_STATUSES)[number];
-
-export const REQUEST_STAGES = [
-  "Public Request",
-  "Signatory Check",
-  "CoopStream Processing",
-  "TSS Execution",
-  "CRM Sync",
-  "Completed",
-] as const;
-export type RequestStage = (typeof REQUEST_STAGES)[number];
-
-export const LOAN_STAGES: RequestStage[] = [
-  "Public Request",
-  "Signatory Check",
-  "CoopStream Processing",
-  "CRM Sync",
-  "Completed",
-];
-
-export const TRADE_STAGES: RequestStage[] = [
-  "Public Request",
-  "Signatory Check",
-  "TSS Execution",
-  "CRM Sync",
-  "Completed",
-];
-
-export const ONBOARDING_STATUS_LABELS: Record<OnboardingStatus, string> = {
-  draft: "Draft",
-  pending_review: "Pending Review",
-  approved: "Approved",
-  rejected: "Rejected",
+export const PERMISSION_LABELS: Record<string, string> = {
+  MANAGE_EMPLOYEES: "Manage employees",
+  MANAGE_ROLES: "Manage roles",
+  MANAGE_PERMISSIONS: "Manage permissions",
+  MANAGE_ORGANIZATIONS: "Manage organizations",
+  VIEW_ORGANIZATIONS: "View organizations",
+  MANAGE_SIGNATORY_ANY: "Configure any signatory matrix",
+  MANAGE_SIGNATORY_OWN: "Configure own signatory matrix",
+  MANAGE_OWN_ORG: "Manage own organization",
 };
 
-export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
-  in_progress: "In Progress",
-  completed: "Completed",
-  rejected: "Rejected",
-  on_hold: "On Hold",
-};
+export const ORG_STATUSES = ["ACTIVE", "SUSPENDED", "TERMINATED"] as const;
+export type OrgStatus = (typeof ORG_STATUSES)[number];
 
-export const ROLE_LABELS: Record<OfficerRole, string> = {
-  officer: "Officer",
-  supervisor: "Supervisor",
-  admin: "Administrator",
-};
+export const VALIDATION_STATUSES = ["PENDING", "VALIDATED", "NOT_VALIDATED"] as const;
+export type ValidationStatus = (typeof VALIDATION_STATUSES)[number];
 
-export const CAPABILITIES = [
-  "onboarding.approve",
-  "signatories.manage",
-  "rules.manage",
-  "settings.manage",
-  "users.manage",
-] as const;
-export type Capability = (typeof CAPABILITIES)[number];
+export const ORG_ROLES = ["Admin", "User"] as const;
+export type OrgUserRole = (typeof ORG_ROLES)[number];
 
-export const CAPABILITY_LABELS: Record<Capability, string> = {
-  "onboarding.approve": "Approve / reject onboarding",
-  "signatories.manage": "Manage customer signatories",
-  "rules.manage": "Manage signatory rules",
-  "settings.manage": "Edit signatory settings",
-  "users.manage": "Manage portal users",
-};
+export const PERMISSION_TYPES = ["INITIATE", "APPROVE", "VIEW"] as const;
+export type PermissionType = (typeof PERMISSION_TYPES)[number];
 
-export const DEFAULT_ROLE_PERMISSIONS: Record<OfficerRole, Capability[]> = {
-  officer: ["signatories.manage"],
-  supervisor: ["onboarding.approve", "signatories.manage", "rules.manage", "settings.manage"],
-  admin: [
-    "onboarding.approve",
-    "signatories.manage",
-    "rules.manage",
-    "settings.manage",
-    "users.manage",
-  ],
-};
+export const ROLE_SCOPES = ["EMPLOYEE", "ORGANIZATION"] as const;
+export type RoleScope = (typeof ROLE_SCOPES)[number];
+
+export const APPROVAL_TYPES = ["LOAN_APPLICATION"] as const;
+export const APPROVAL_ACTIONS = ["CREATE"] as const;
+
+export const DOCUMENT_TYPES = ["BUSINESS_LICENSE"] as const;
 
 export const NAV_ITEMS: Array<{
   href: string;
   label: string;
-  roles: readonly OfficerRole[];
+  permissions: readonly string[];
 }> = [
-  { href: "/onboarding", label: "Organization Onboarding", roles: OFFICER_ROLES },
-  { href: "/signatory-matrix", label: "Signatory Matrix", roles: OFFICER_ROLES },
-  { href: "/status", label: "Status Viewer", roles: OFFICER_ROLES },
-  { href: "/users", label: "Users", roles: ["admin"] },
-  { href: "/settings", label: "Settings", roles: ["supervisor", "admin"] },
+  {
+    href: "/organizations",
+    label: "Contracts",
+    permissions: ["VIEW_ORGANIZATIONS", "MANAGE_ORGANIZATIONS"],
+  },
+  { href: "/employees", label: "Employees", permissions: ["MANAGE_EMPLOYEES"] },
+  {
+    href: "/roles",
+    label: "Roles",
+    permissions: ["MANAGE_ROLES", "MANAGE_PERMISSIONS", "MANAGE_EMPLOYEES", "MANAGE_ORGANIZATIONS"],
+  },
+  { href: "/profile", label: "Profile", permissions: [] },
 ];
