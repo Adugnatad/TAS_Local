@@ -46,7 +46,9 @@ export const NAV_ITEMS: Array<{
     label: "Contracts",
     permissions: ["VIEW_ORGANIZATIONS", "MANAGE_ORGANIZATIONS"],
   },
+  { href: "/status", label: "Status", permissions: ["VIEW_ORGANIZATIONS", "MANAGE_ORGANIZATIONS"] },
   { href: "/employees", label: "Employees", permissions: ["MANAGE_EMPLOYEES"] },
+  { href: "/engineer-tasks", label: "Engineer", permissions: [] },
   {
     href: "/roles",
     label: "Roles",

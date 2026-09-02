@@ -1,0 +1,490 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import {
+  ArrowLeft,
+  CalendarDays,
+  CheckCircle2,
+  ChevronRight,
+  FileText,
+  MapPin,
+  Plus,
+  Ruler,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+
+type TaskKind = "estimation" | "appointment";
+type Task = {
+  id: string;
+  kind: TaskKind;
+  name: string;
+  description: string;
+  collateralId: string;
+  collateralType: string;
+  location: string;
+  received: string;
+};
+
+const initialTasks: Task[] = [
+  {
+    id: "ENG-24076",
+    kind: "appointment",
+    name: "Set valuation appointment",
+    description: "Confirm a suitable date for the collateral inspection visit.",
+    collateralId: "COL-88398",
+    collateralType: "Residential property",
+    location: "Kirkos, Addis Ababa",
+    received: "Yesterday, 15:18",
+  },
+  {
+    id: "ENG-24081",
+    kind: "estimation",
+    name: "Property valuation and estimation",
+    description: "Review the collateral details and submit an estimated property value.",
+    collateralId: "COL-88421",
+    collateralType: "Commercial property",
+    location: "Bole, Addis Ababa",
+    received: "Today, 09:42",
+  },
+];
+
+const fieldClass = "h-10 bg-background";
+
+export function EngineerTasks() {
+  const [tasks, setTasks] = useState(initialTasks);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [query, setQuery] = useState("");
+
+  const filteredTasks = useMemo(
+    () =>
+      tasks.filter((task) =>
+        `${task.name} ${task.id} ${task.location}`.toLowerCase().includes(query.toLowerCase()),
+      ),
+    [query, tasks],
+  );
+
+  function completeTask() {
+    if (!selectedTask) return;
+    setTasks((current) => current.filter((task) => task.id !== selectedTask.id));
+    setSelectedTask(null);
+  }
+
+  return (
+    <div className="mx-auto max-w-7xl space-y-6">
+      <PageHeader
+        title="Engineer tasks"
+        description="Work assigned to you for collateral inspection and valuation."
+        actions={
+          <Badge variant="secondary" className="h-8 gap-2 px-3 font-medium">
+            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+            {tasks.length} active {tasks.length === 1 ? "task" : "tasks"}
+          </Badge>
+        }
+      />
+
+      <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
+        <section className="space-y-4" aria-labelledby="active-tasks-heading">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 id="active-tasks-heading" className="text-lg font-semibold">
+                Active queue
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Select a task to continue the workflow.
+              </p>
+            </div>
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search tasks"
+                className="pl-9"
+              />
+            </div>
+          </div>
+
+          {filteredTasks.length ? (
+            <div className="space-y-3">
+              {filteredTasks.map((task) => (
+                <button
+                  key={task.id}
+                  type="button"
+                  onClick={() => setSelectedTask(task)}
+                  className="group flex w-full items-start gap-4 rounded-lg border bg-card p-5 text-left shadow-sm transition-colors hover:border-primary/50 hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    {task.kind === "estimation" ? (
+                      <Ruler className="h-5 w-5" />
+                    ) : (
+                      <CalendarDays className="h-5 w-5" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-semibold">{task.name}</h3>
+                      <Badge variant="outline" className="font-mono text-[10px]">
+                        {task.id}
+                      </Badge>
+                    </div>
+                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                      {task.description}
+                    </p>
+                    <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
+                      <span className="inline-flex items-center gap-1.5">
+                        <FileText className="h-3.5 w-3.5" />
+                        {task.collateralId}
+                      </span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <MapPin className="h-3.5 w-3.5" />
+                        {task.location}
+                      </span>
+                      <span>{task.received}</span>
+                    </div>
+                  </div>
+                  <ChevronRight className="mt-2 h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+                </button>
+              ))}
+            </div>
+          ) : (
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+                <CheckCircle2 className="h-10 w-10 text-emerald-600" />
+                <h3 className="mt-4 font-semibold">No active tasks</h3>
+                <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+                  You are all caught up. New assignments will appear here.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </section>
+      </div>
+
+      {selectedTask && (
+        <TaskPanel
+          task={selectedTask}
+          onClose={() => setSelectedTask(null)}
+          onComplete={completeTask}
+        />
+      )}
+    </div>
+  );
+}
+
+function TaskPanel({
+  task,
+  onClose,
+  onComplete,
+}: {
+  task: Task;
+  onClose: () => void;
+  onComplete: () => void;
+}) {
+  const [buildings, setBuildings] = useState(["Main building"]);
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [submitted, setSubmitted] = useState(false);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex justify-end bg-foreground/30 backdrop-blur-[1px]"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="task-panel-title"
+    >
+      <div className="flex h-full w-full max-w-2xl flex-col overflow-hidden bg-background shadow-2xl">
+        <div className="flex items-start justify-between border-b px-6 py-5">
+          <div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="mb-3 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Back to tasks
+            </button>
+            <h2 id="task-panel-title" className="text-xl font-semibold">
+              {task.name}
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {task.id} · {task.collateralType}
+            </p>
+          </div>
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close task">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-6">
+          {submitted ? (
+            <div className="flex min-h-[420px] flex-col items-center justify-center text-center">
+              <CheckCircle2 className="h-14 w-14 text-emerald-600" />
+              <h3 className="mt-5 text-xl font-semibold">Task submitted</h3>
+              <p className="mt-2 max-w-sm text-sm text-muted-foreground">
+                The task has been completed and removed from your active queue.
+              </p>
+              <Button className="mt-6" onClick={onComplete}>
+                Return to task list
+              </Button>
+            </div>
+          ) : (
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                setSubmitted(true);
+              }}
+              className="space-y-6"
+            >
+              <Card className="bg-muted/40">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">Collateral context</CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-4 text-sm sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Collateral ID</p>
+                    <p className="mt-1 font-medium">{task.collateralId}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Location</p>
+                    <p className="mt-1 font-medium">{task.location}</p>
+                  </div>
+                </CardContent>
+              </Card>
+              {task.kind === "appointment" ? (
+                <AppointmentFields date={date} setDate={setDate} />
+              ) : (
+                <EstimationFields buildings={buildings} setBuildings={setBuildings} />
+              )}
+              <Separator />
+              <div className="flex justify-end gap-3">
+                <Button type="button" variant="outline" onClick={onClose}>
+                  Cancel
+                </Button>
+                <Button type="submit">
+                  {task.kind === "appointment" ? "Set appointment" : "Submit valuation"}
+                </Button>
+              </div>
+            </form>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AppointmentFields({ date, setDate }: { date: string; setDate: (value: string) => void }) {
+  return (
+    <section className="space-y-4">
+      <div>
+        <h3 className="font-semibold">Appointment details</h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Choose the preferred date for the collateral inspection.
+        </p>
+      </div>
+      <div className="max-w-xs space-y-2">
+        <Label htmlFor="appointment-date">Inspection date</Label>
+        <Input
+          id="appointment-date"
+          type="date"
+          min={new Date().toISOString().slice(0, 10)}
+          value={date}
+          onChange={(event) => setDate(event.target.value)}
+          className={fieldClass}
+        />
+      </div>
+    </section>
+  );
+}
+
+function EstimationFields({
+  buildings,
+  setBuildings,
+}: {
+  buildings: string[];
+  setBuildings: (value: string[]) => void;
+}) {
+  return (
+    <div className="space-y-7">
+      <section className="space-y-4">
+        <div>
+          <h3 className="font-semibold">Property details</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Record the plot and general-use details from your assessment.
+          </p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="plot-area">Plot area (m²)</Label>
+            <Input
+              id="plot-area"
+              type="number"
+              min="1"
+              placeholder="e.g. 450"
+              className={fieldClass}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="town">Property town</Label>
+            <select
+              id="town"
+              className={`${fieldClass} w-full rounded-md border px-3 text-sm`}
+              defaultValue=""
+            >
+              <option value="" disabled>
+                Select town
+              </option>
+              <option>Finfinne Border A1</option>
+              <option>Major Cities C1</option>
+              <option>Secondary Major Cities D1</option>
+            </select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="use">General use</Label>
+            <Input id="use" placeholder="e.g. Commercial" className={fieldClass} required />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="grade">Plot grade</Label>
+            <select
+              id="grade"
+              className={`${fieldClass} w-full rounded-md border px-3 text-sm`}
+              defaultValue="Excellent"
+            >
+              <option>Excellent</option>
+              <option>Good</option>
+              <option>Average</option>
+            </select>
+          </div>
+        </div>
+      </section>
+      <Separator />
+      <section className="space-y-4">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <h3 className="font-semibold">Buildings</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Add each building included in the valuation.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setBuildings([...buildings, `Building ${buildings.length + 1}`])}
+          >
+            <Plus className="mr-1.5 h-4 w-4" />
+            Add building
+          </Button>
+        </div>
+        <div className="space-y-3">
+          {buildings.map((building, index) => (
+            <div
+              key={building}
+              className="grid gap-3 rounded-md border p-4 sm:grid-cols-[1fr_110px_110px_auto]"
+            >
+              <div className="space-y-2 sm:col-span-4">
+                <Label htmlFor={`building-${index}`}>Building type</Label>
+                <Input id={`building-${index}`} defaultValue={building} className={fieldClass} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor={`length-${index}`}>Length (m)</Label>
+                <Input
+                  id={`length-${index}`}
+                  type="number"
+                  min="0.1"
+                  step="0.1"
+                  placeholder="0"
+                  required
+                  className={fieldClass}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor={`width-${index}`}>Width (m)</Label>
+                <Input
+                  id={`width-${index}`}
+                  type="number"
+                  min="0.1"
+                  step="0.1"
+                  placeholder="0"
+                  required
+                  className={fieldClass}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor={`floors-${index}`}>Floors</Label>
+                <Input
+                  id={`floors-${index}`}
+                  type="number"
+                  min="1"
+                  placeholder="1"
+                  required
+                  className={fieldClass}
+                />
+              </div>
+              {buildings.length > 1 && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="self-end text-muted-foreground hover:text-destructive"
+                  onClick={() =>
+                    setBuildings(buildings.filter((_, itemIndex) => itemIndex !== index))
+                  }
+                  aria-label={`Remove ${building}`}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
+      <Separator />
+      <section className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="mcf">Material cost factor (MCF)</Label>
+          <Input
+            id="mcf"
+            type="number"
+            min="0.1"
+            step="0.1"
+            placeholder="1.00"
+            required
+            className={fieldClass}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="pef">Price escalation factor (PEF)</Label>
+          <Input
+            id="pef"
+            type="number"
+            min="0.1"
+            step="0.1"
+            placeholder="1.00"
+            required
+            className={fieldClass}
+          />
+        </div>
+        <div className="space-y-2 sm:col-span-2">
+          <Label htmlFor="remarks">
+            Engineer remarks{" "}
+            <span className="font-normal text-muted-foreground">(optional, 100 characters)</span>
+          </Label>
+          <textarea
+            id="remarks"
+            maxLength={100}
+            className="min-h-20 w-full resize-y rounded-md border bg-background px-3 py-2 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
+            placeholder="Add a short note about the assessment."
+          />
+        </div>
+      </section>
+    </div>
+  );
+}

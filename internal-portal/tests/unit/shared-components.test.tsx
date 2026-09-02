@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
+import StatusPage from "@/app/(internal)/status/page";
 
 function wrapper({ children }: { children: React.ReactNode }) {
   const queryClient = new QueryClient({
@@ -41,5 +42,14 @@ describe("ErrorState", () => {
     expect(screen.getByText("Something went wrong")).toBeInTheDocument();
     screen.getByRole("button", { name: "Try again" }).click();
     expect(onRetry).toHaveBeenCalledOnce();
+  });
+});
+
+describe("StatusPage", () => {
+  it("renders organization request status rows", () => {
+    render(<StatusPage />);
+    expect(screen.getByText("Organization request statuses")).toBeInTheDocument();
+    expect(screen.getByText("Pending review")).toBeInTheDocument();
+    expect(screen.getByText("Acme Manufacturing Corp.")).toBeInTheDocument();
   });
 });
