@@ -41,9 +41,9 @@ export async function POST(request: NextRequest) {
   try {
     const newCustomer = await createCustomer(customer);
     return NextResponse.json(newCustomer, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { message: error.message || "Failed to create customer" },
+      { message: error instanceof Error ? error.message : "Failed to create customer" },
       { status: 400 },
     );
   }

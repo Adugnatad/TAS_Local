@@ -11,6 +11,7 @@ export function useSession() {
 
   const can = (code: string) => hasPermission(user?.permissions, code);
   const canAny = (...codes: string[]) => hasAnyPermission(user?.permissions, codes);
+  const hasRole = (...roles: string[]) => roles.some((role) => user?.roles.includes(role));
 
   return {
     user,
@@ -21,5 +22,6 @@ export function useSession() {
     clearSession,
     can,
     canAny,
+    hasRole,
   };
 }

@@ -34,11 +34,15 @@ export function now(): string {
 export function toSessionUser(officer: Officer): SessionUser {
   return {
     id: officer.id,
-    name: officer.name,
+    username: officer.email,
     email: officer.email,
-    role: officer.role,
-    phone: officer.phone,
-    department: officer.department,
+    firstName: officer.name,
+    lastName: null,
+    userType: "EMPLOYEE",
+    roles: [officer.role],
+    permissions: rolePermissions[officer.role],
+    organization: null,
+    permissionType: null,
   };
 }
 
@@ -60,7 +64,7 @@ export function requireCapability(capability: Capability) {
       error: NextResponse.json({ message: "Unauthorized" }, { status: 401 }),
     };
   }
-  const granted = rolePermissions[session.role] ?? [];
+  const granted = session.permissions ?? [];
   if (!granted.includes(capability)) {
     return {
       session,

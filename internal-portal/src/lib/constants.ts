@@ -1,5 +1,39 @@
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "/api";
 
+export const OFFICER_ROLES = ["officer", "supervisor", "admin"] as const;
+export type OfficerRole = (typeof OFFICER_ROLES)[number];
+
+export const CAPABILITIES = [
+  "onboarding.approve",
+  "signatories.manage",
+  "rules.manage",
+  "settings.manage",
+  "users.manage",
+] as const;
+export type Capability = (typeof CAPABILITIES)[number];
+
+export const DEFAULT_ROLE_PERMISSIONS: Record<OfficerRole, Capability[]> = {
+  officer: ["signatories.manage"],
+  supervisor: ["onboarding.approve", "signatories.manage", "rules.manage", "settings.manage"],
+  admin: [
+    "onboarding.approve",
+    "signatories.manage",
+    "rules.manage",
+    "settings.manage",
+    "users.manage",
+  ],
+};
+
+export const ONBOARDING_STATUSES = ["draft", "pending_review", "approved", "rejected"] as const;
+export type OnboardingStatus = (typeof ONBOARDING_STATUSES)[number];
+
+export const ONBOARDING_STATUS_LABELS: Record<OnboardingStatus, string> = {
+  draft: "Draft",
+  pending_review: "Pending Review",
+  approved: "Approved",
+  rejected: "Rejected",
+};
+
 export const PERMISSION_LABELS: Record<string, string> = {
   MANAGE_EMPLOYEES: "Manage employees",
   MANAGE_ROLES: "Manage roles",
