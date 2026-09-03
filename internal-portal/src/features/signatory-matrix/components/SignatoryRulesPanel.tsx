@@ -3,10 +3,23 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { MoreVertical, Plus } from "lucide-react";
-import { useApprovalRules, useApprovalTypes, useMatrixMutations, useSignatoryGroups } from "../hooks";
-import type { ApprovalRule } from "../types";
+import {
+  useApprovalRules,
+  useApprovalTypeOptions,
+  useCurrencies,
+  useMatrixMutations,
+  useSignatoryGroups,
+} from "../hooks";
+import type { ApprovalRule, CreateApprovalRuleInput, RangeType, Sequencing, TransactionType } from "../types";
+import { ConditionTreeBuilder } from "./ConditionTreeBuilder";
+import { ApplyTemplateDialog } from "./ApplyTemplateDialog";
+import {
+  defaultBuilderState,
+  parseConditionTree,
+  serializeBuilderState,
+  type ConditionBuilderState,
+} from "../utils/condition-tree";
 import { useSession } from "@/features/auth/hooks/useSession";
-import { APPROVAL_ACTIONS, APPROVAL_TYPES } from "@/lib/constants";
 import { ApiError } from "@/lib/api-client";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -14,6 +27,7 @@ import { ErrorState } from "@/components/shared/ErrorState";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -43,35 +57,98 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+const TRANSACTION_TYPES: TransactionType[] = [
+  "PER_TRANSACTION",
+  "AGGREGATE_DAILY",
+  "AGGREGATE_MONTHLY",
+];
+const RANGE_TYPES: RangeType[] = ["UPTO", "ABOVE", "BETWEEN"];
+const SEQUENCING_OPTIONS: Sequencing[] = ["SEQUENTIAL", "PARALLEL"];
+
 type RuleFormState = {
   approvalType: string;
   approvalAction: string;
+  transactionType: TransactionType;
+  rangeType: RangeType;
   minAmount: string;
   maxAmount: string;
-  signatoryGroupId: string;
+  currency: string;
+  sequencing: Sequencing;
+  approvalRequired: boolean;
+  effectiveFrom: string;
+  effectiveTo: string;
+  escalationTimeoutHours: string;
+  escalationTo: string;
 };
 
-const emptyForm = (approvalType = APPROVAL_TYPES[0] as string): RuleFormState => ({
-  approvalType,
-  approvalAction: APPROVAL_ACTIONS[0],
-  minAmount: "0",
-  maxAmount: "1000000",
-  signatoryGroupId: "",
-});
+function emptyForm(approvalType = "LOAN_APPLICATION"): RuleFormState {
+  return {
+    approvalType,
+    approvalAction: "CREATE",
+    transactionType: "PER_TRANSACTION",
+    rangeType: "BETWEEN",
+    minAmount: "0",
+    maxAmount: "1000000",
+    currency: "ETB",
+    sequencing: "SEQUENTIAL",
+    approvalRequired: true,
+    effectiveFrom: "",
+    effectiveTo: "",
+    escalationTimeoutHours: "",
+    escalationTo: "",
+  };
+}
+
+function ruleToForm(rule: ApprovalRule): RuleFormState {
+  return {
+    approvalType: rule.approvalType,
+    approvalAction: rule.approvalAction,
+    transactionType: rule.transactionType ?? "PER_TRANSACTION",
+    rangeType: rule.rangeType ?? "BETWEEN",
+    minAmount: String(rule.minAmount ?? 0),
+    maxAmount: String(rule.maxAmount ?? 0),
+    currency: rule.currency ?? "ETB",
+    sequencing: rule.sequencing ?? "SEQUENTIAL",
+    approvalRequired: rule.approvalRequired ?? true,
+    effectiveFrom: rule.effectiveFrom ?? "",
+    effectiveTo: rule.effectiveTo ?? "",
+    escalationTimeoutHours: rule.escalation?.timeoutHours
+      ? String(rule.escalation.timeoutHours)
+      : "",
+    escalationTo: rule.escalation?.escalateTo ?? "",
+  };
+}
+
+function formatRuleApiError(error: unknown): string {
+  if (!(error instanceof ApiError)) return "Save failed.";
+  if (
+    error.code === "OVERLAPPING_RULE" ||
+    error.code === "COVERAGE_GAP" ||
+    error.code === "INSUFFICIENT_APPROVERS" ||
+    error.code === "EMPTY_CONDITION" ||
+    error.code === "INVALID_BAND"
+  ) {
+    return error.message;
+  }
+  return error.message || "Save failed.";
+}
 
 export function SignatoryRulesPanel({ orgId }: { orgId: string }) {
   const { can } = useSession();
   const canManage = can("MANAGE_SIGNATORY_ANY");
   const groups = useSignatoryGroups(orgId);
   const mutations = useMatrixMutations(orgId);
-  const approvalTypes = useApprovalTypes();
-  const typeOptions = approvalTypes.data ?? APPROVAL_TYPES.map((code) => ({ code, label: code }));
+  const { approvalTypes: typeOptions, approvalActions: actionOptions } = useApprovalTypeOptions();
+  const currencies = useCurrencies();
 
   const [typeFilter, setTypeFilter] = useState<string>("ALL");
   const [groupFilter, setGroupFilter] = useState<string>("ALL");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [templateOpen, setTemplateOpen] = useState(false);
   const [editing, setEditing] = useState<ApprovalRule | null>(null);
   const [form, setForm] = useState<RuleFormState>(() => emptyForm(typeOptions[0]?.code));
+  const [builderState, setBuilderState] = useState<ConditionBuilderState>(defaultBuilderState());
+  const [formError, setFormError] = useState<string | null>(null);
 
   const queryParams = useMemo(
     () => ({
@@ -82,6 +159,7 @@ export function SignatoryRulesPanel({ orgId }: { orgId: string }) {
   );
 
   const rules = useApprovalRules(orgId, queryParams);
+  const currencyOptions = currencies.data?.length ? currencies.data : ["ETB", "USD"];
 
   const groupNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -92,53 +170,73 @@ export function SignatoryRulesPanel({ orgId }: { orgId: string }) {
   function openCreate() {
     setEditing(null);
     setForm(emptyForm(typeOptions[0]?.code));
+    setBuilderState(defaultBuilderState());
+    setFormError(null);
     setDialogOpen(true);
   }
 
   function openEdit(rule: ApprovalRule) {
     setEditing(rule);
-    setForm({
-      approvalType: rule.approvalType,
-      approvalAction: rule.approvalAction,
-      minAmount: String(rule.minAmount),
-      maxAmount: String(rule.maxAmount),
-      signatoryGroupId: rule.signatoryGroupId,
-    });
+    setForm(ruleToForm(rule));
+    setBuilderState(parseConditionTree(rule));
+    setFormError(null);
     setDialogOpen(true);
   }
 
-  async function onSave() {
-    const payload = {
+  function buildPayload(): CreateApprovalRuleInput | null {
+    const minAmount = Number(form.minAmount);
+    const maxAmount = Number(form.maxAmount);
+    if (!Number.isFinite(minAmount) || !Number.isFinite(maxAmount)) {
+      setFormError("Enter valid min and max amounts.");
+      return null;
+    }
+
+    const approverPayload = serializeBuilderState(builderState);
+    if (form.approvalRequired && !approverPayload.signatoryGroupId && !approverPayload.conditionTree) {
+      setFormError("Select at least one signatory group when approval is required.");
+      return null;
+    }
+
+    const payload: CreateApprovalRuleInput = {
       approvalType: form.approvalType,
       approvalAction: form.approvalAction,
-      minAmount: Number(form.minAmount),
-      maxAmount: Number(form.maxAmount),
-      signatoryGroupId: form.signatoryGroupId,
+      transactionType: form.transactionType,
+      rangeType: form.rangeType,
+      minAmount,
+      maxAmount,
+      currency: form.currency || undefined,
+      sequencing: form.sequencing,
+      approvalRequired: form.approvalRequired,
+      effectiveFrom: form.effectiveFrom || null,
+      effectiveTo: form.effectiveTo || null,
     };
-    if (!payload.signatoryGroupId) {
-      toast.error("Select a signatory group.");
-      return;
+
+    if (approverPayload.signatoryGroupId) {
+      payload.signatoryGroupId = approverPayload.signatoryGroupId;
+    } else if (approverPayload.conditionTree) {
+      payload.conditionTree = approverPayload.conditionTree;
     }
-    if (!Number.isFinite(payload.minAmount) || !Number.isFinite(payload.maxAmount)) {
-      toast.error("Enter valid min and max amounts.");
-      return;
+
+    if (form.escalationTimeoutHours || form.escalationTo) {
+      payload.escalation = {
+        timeoutHours: form.escalationTimeoutHours
+          ? Number(form.escalationTimeoutHours)
+          : undefined,
+        escalateTo: form.escalationTo || undefined,
+      };
     }
+
+    return payload;
+  }
+
+  async function onSave() {
+    setFormError(null);
+    const payload = buildPayload();
+    if (!payload) return;
 
     try {
       if (editing) {
-        try {
-          await mutations.updateRule.mutateAsync({ ruleId: editing.id, ...payload });
-        } catch (error) {
-          // Fallback when Portal Core has no PUT for rules
-          if (error instanceof ApiError && (error.status === 404 || error.status === 405)) {
-            await mutations.setRuleActive.mutateAsync({ ruleId: editing.id, active: false });
-            await mutations.createRule.mutateAsync(payload);
-            toast.success("Rule replaced (update endpoint unavailable).");
-            setDialogOpen(false);
-            return;
-          }
-          throw error;
-        }
+        await mutations.updateRule.mutateAsync({ ruleId: editing.id, ...payload });
         toast.success("Rule updated.");
       } else {
         await mutations.createRule.mutateAsync(payload);
@@ -146,7 +244,16 @@ export function SignatoryRulesPanel({ orgId }: { orgId: string }) {
       }
       setDialogOpen(false);
     } catch (error) {
-      toast.error(error instanceof ApiError ? error.message : "Save failed.");
+      setFormError(formatRuleApiError(error));
+    }
+  }
+
+  async function onDelete(ruleId: string) {
+    try {
+      await mutations.deleteRule.mutateAsync(ruleId);
+      toast.success("Rule deleted.");
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : "Delete failed.");
     }
   }
 
@@ -159,14 +266,19 @@ export function SignatoryRulesPanel({ orgId }: { orgId: string }) {
         <div>
           <h2 className="text-lg font-semibold">Approval rules</h2>
           <p className="text-sm text-muted-foreground">
-            Amount-based rules that bind a transaction type to a signatory group.
+            Amount-based rules with AND/OR signatory conditions.
           </p>
         </div>
         {canManage && (
-          <Button onClick={openCreate}>
-            <Plus className="size-4" />
-            Add rule
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setTemplateOpen(true)}>
+              Apply template
+            </Button>
+            <Button onClick={openCreate}>
+              <Plus className="size-4" />
+              Add rule
+            </Button>
+          </div>
         )}
       </div>
 
@@ -208,9 +320,8 @@ export function SignatoryRulesPanel({ orgId }: { orgId: string }) {
               <TableRow className="bg-sky-50/80 hover:bg-sky-50/80">
                 <TableHead>Type</TableHead>
                 <TableHead>Action</TableHead>
-                <TableHead>Min</TableHead>
-                <TableHead>Max</TableHead>
-                <TableHead>Signatory group</TableHead>
+                <TableHead>Band</TableHead>
+                <TableHead>Group / Tree</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-12">Actions</TableHead>
               </TableRow>
@@ -220,10 +331,13 @@ export function SignatoryRulesPanel({ orgId }: { orgId: string }) {
                 <TableRow key={rule.id}>
                   <TableCell className="font-mono text-xs">{rule.approvalType}</TableCell>
                   <TableCell>{rule.approvalAction}</TableCell>
-                  <TableCell className="tabular-nums">{rule.minAmount}</TableCell>
-                  <TableCell className="tabular-nums">{rule.maxAmount}</TableCell>
-                  <TableCell>
-                    {groupNameById.get(rule.signatoryGroupId) ?? rule.signatoryGroupId}
+                  <TableCell className="tabular-nums text-sm">
+                    {rule.minAmount} – {rule.maxAmount} {rule.currency ?? "ETB"}
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {rule.signatoryGroupName ??
+                      groupNameById.get(rule.signatoryGroupId ?? "") ??
+                      (rule.conditionTree ? "Condition tree" : "—")}
                   </TableCell>
                   <TableCell>
                     {rule.status ? <StatusBadge status={rule.status} /> : "—"}
@@ -260,6 +374,11 @@ export function SignatoryRulesPanel({ orgId }: { orgId: string }) {
                             {rule.status === "ACTIVE" ? "Deactivate" : "Activate"}
                           </DropdownMenuItem>
                         )}
+                        {canManage && (
+                          <DropdownMenuItem onClick={() => void onDelete(rule.id)}>
+                            Delete
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -271,7 +390,7 @@ export function SignatoryRulesPanel({ orgId }: { orgId: string }) {
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto max-w-2xl">
           <DialogHeader>
             <DialogTitle>{editing ? "Edit approval rule" : "Add approval rule"}</DialogTitle>
           </DialogHeader>
@@ -308,7 +427,48 @@ export function SignatoryRulesPanel({ orgId }: { orgId: string }) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {APPROVAL_ACTIONS.map((item) => (
+                  {actionOptions.map((item) => (
+                    <SelectItem key={item.code} value={item.code}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Transaction type</Label>
+              <Select
+                value={form.transactionType}
+                onValueChange={(value) =>
+                  value &&
+                  setForm((prev) => ({ ...prev, transactionType: value as TransactionType }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TRANSACTION_TYPES.map((item) => (
+                    <SelectItem key={item} value={item}>
+                      {item}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Range type</Label>
+              <Select
+                value={form.rangeType}
+                onValueChange={(value) =>
+                  value && setForm((prev) => ({ ...prev, rangeType: value as RangeType }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {RANGE_TYPES.map((item) => (
                     <SelectItem key={item} value={item}>
                       {item}
                     </SelectItem>
@@ -330,26 +490,98 @@ export function SignatoryRulesPanel({ orgId }: { orgId: string }) {
                 onChange={(e) => setForm((prev) => ({ ...prev, maxAmount: e.target.value }))}
               />
             </div>
-            <div className="space-y-1 sm:col-span-2">
-              <Label>Signatory group</Label>
+            <div className="space-y-1">
+              <Label>Currency</Label>
               <Select
-                value={form.signatoryGroupId || undefined}
+                value={form.currency}
                 onValueChange={(value) =>
-                  value && setForm((prev) => ({ ...prev, signatoryGroupId: value }))
+                  value && setForm((prev) => ({ ...prev, currency: value }))
                 }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select group" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {(groups.data ?? []).map((group) => (
-                    <SelectItem key={group.id} value={group.id}>
-                      {group.name}
+                  {currencyOptions.map((item) => (
+                    <SelectItem key={item} value={item}>
+                      {item}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-1">
+              <Label>Sequencing</Label>
+              <Select
+                value={form.sequencing}
+                onValueChange={(value) =>
+                  value && setForm((prev) => ({ ...prev, sequencing: value as Sequencing }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SEQUENCING_OPTIONS.map((item) => (
+                    <SelectItem key={item} value={item}>
+                      {item}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2 sm:col-span-2">
+              <Checkbox
+                checked={form.approvalRequired}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, approvalRequired: e.target.checked }))
+                }
+              />
+              <Label>Approval required (uncheck for auto-approve band)</Label>
+            </div>
+            <div className="space-y-1">
+              <Label>Effective from</Label>
+              <Input
+                type="date"
+                value={form.effectiveFrom}
+                onChange={(e) => setForm((prev) => ({ ...prev, effectiveFrom: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Effective to</Label>
+              <Input
+                type="date"
+                value={form.effectiveTo}
+                onChange={(e) => setForm((prev) => ({ ...prev, effectiveTo: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Escalation timeout (hours)</Label>
+              <Input
+                value={form.escalationTimeoutHours}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, escalationTimeoutHours: e.target.value }))
+                }
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Escalate to</Label>
+              <Input
+                value={form.escalationTo}
+                onChange={(e) => setForm((prev) => ({ ...prev, escalationTo: e.target.value }))}
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <Label className="mb-2 block">Approvers</Label>
+              <ConditionTreeBuilder
+                groups={groups.data ?? []}
+                state={builderState}
+                onChange={setBuilderState}
+              />
+            </div>
+            {formError && (
+              <p className="sm:col-span-2 text-sm text-destructive">{formError}</p>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
@@ -364,6 +596,13 @@ export function SignatoryRulesPanel({ orgId }: { orgId: string }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ApplyTemplateDialog
+        orgId={orgId}
+        open={templateOpen}
+        onOpenChange={setTemplateOpen}
+        groups={groups.data ?? []}
+      />
     </div>
   );
 }

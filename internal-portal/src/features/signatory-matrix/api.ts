@@ -1,5 +1,17 @@
 import { apiClient } from "@/lib/api-client";
-import type { ApprovalRule, MatrixEvaluation, SignatoryGroup, SignatoryMember } from "./types";
+import type {
+  ApprovalFeature,
+  ApprovalPolicyTemplate,
+  ApprovalRule,
+  ApprovalTypesResponse,
+  CreateApprovalRuleInput,
+  MatrixAuditEntry,
+  MatrixEvaluation,
+  SimulationRequest,
+  SimulationResponse,
+  SignatoryGroup,
+  SignatoryMember,
+} from "./types";
 
 const base = (orgId: string) => `/organizations/${orgId}`;
 
@@ -92,13 +104,7 @@ export async function fetchRules(
 
 export async function createRule(
   orgId: string,
-  input: {
-    approvalType: string;
-    approvalAction: string;
-    minAmount: number;
-    maxAmount: number;
-    signatoryGroupId: string;
-  },
+  input: CreateApprovalRuleInput,
 ): Promise<ApprovalRule> {
   return apiClient(`${base(orgId)}/approval-rules`, { method: "POST", body: input });
 }
@@ -106,15 +112,13 @@ export async function createRule(
 export async function updateRule(
   orgId: string,
   ruleId: string,
-  input: {
-    approvalType: string;
-    approvalAction: string;
-    minAmount: number;
-    maxAmount: number;
-    signatoryGroupId: string;
-  },
+  input: CreateApprovalRuleInput,
 ): Promise<ApprovalRule> {
   return apiClient(`${base(orgId)}/approval-rules/${ruleId}`, { method: "PUT", body: input });
+}
+
+export async function deleteRule(orgId: string, ruleId: string): Promise<void> {
+  return apiClient(`${base(orgId)}/approval-rules/${ruleId}`, { method: "DELETE" });
 }
 
 export async function setRuleActive(
@@ -128,6 +132,56 @@ export async function setRuleActive(
   );
 }
 
+export async function simulateMatrix(
+  orgId: string,
+  input: SimulationRequest,
+): Promise<SimulationResponse> {
+  return apiClient(`${base(orgId)}/matrix/simulate`, { method: "POST", body: input });
+}
+
+export async function fetchMatrixAudit(orgId: string): Promise<MatrixAuditEntry[]> {
+  const data = await apiClient<MatrixAuditEntry[] | { content: MatrixAuditEntry[] }>(
+    `${base(orgId)}/matrix/audit`,
+  );
+  return asArray(data);
+}
+
+export async function fetchApprovalTemplates(): Promise<ApprovalPolicyTemplate[]> {
+  const data = await apiClient<
+    ApprovalPolicyTemplate[] | { content: ApprovalPolicyTemplate[] }
+  >("/approval-policy-templates");
+  return asArray(data);
+}
+
+export async function applyApprovalTemplate(
+  orgId: string,
+  code: string,
+  defaultSignatoryGroupId: string,
+): Promise<ApprovalRule[]> {
+  const data = await apiClient<ApprovalRule[] | { content: ApprovalRule[] }>(
+    `${base(orgId)}/matrix/templates/${code}/apply`,
+    { method: "POST", body: { defaultSignatoryGroupId } },
+  );
+  return asArray(data);
+}
+
+export async function fetchApprovalFeatures(): Promise<ApprovalFeature[]> {
+  const data = await apiClient<ApprovalFeature[] | { content: ApprovalFeature[] }>(
+    "/approval-features",
+  );
+  return asArray(data);
+}
+
+export async function fetchCurrencies(): Promise<string[]> {
+  const data = await apiClient<
+    string[] | { content: string[] } | { currencies: string[] }
+  >("/currencies");
+  if (Array.isArray(data)) return data;
+  if ("currencies" in data && Array.isArray(data.currencies)) return data.currencies;
+  if ("content" in data && Array.isArray(data.content)) return data.content;
+  return [];
+}
+
 export async function fetchEvaluation(orgId: string, evaluationId: string): Promise<MatrixEvaluation> {
   return apiClient(`${base(orgId)}/matrix/evaluations/${evaluationId}`);
 }
@@ -136,10 +190,30 @@ export async function fetchAuthorized(orgId: string, requestRef: string): Promis
   return apiClient(`${base(orgId)}/matrix/authorized`, { params: { requestRef } });
 }
 
-export async function fetchApprovalTypes(): Promise<Array<string | { code?: string; label?: string; name?: string; value?: string }>> {
+export async function fetchApprovalTypes(): Promise<ApprovalTypesResponse> {
   const data = await apiClient<
+    | ApprovalTypesResponse
     | Array<string | { code?: string; label?: string; name?: string; value?: string }>
     | { content: Array<string | { code?: string; label?: string; name?: string; value?: string }> }
   >("/approval-types");
-  return Array.isArray(data) ? data : data.content;
+
+  if (data && typeof data === "object" && "approvalTypes" in data) {
+    return data as ApprovalTypesResponse;
+  }
+
+  const items = Array.isArray(data) ? data : (data as { content: unknown[] }).content ?? [];
+  const approvalTypes = items
+    .map((item) => {
+      if (typeof item === "string") return { value: item, label: item };
+      const record = item as { code?: string; label?: string; name?: string; value?: string };
+      const value = record.code || record.value || record.name || "";
+      if (!value) return null;
+      return { value, label: record.label || record.name || value };
+    })
+    .filter((item): item is { value: string; label: string } => Boolean(item));
+
+  return {
+    approvalTypes,
+    approvalActions: [{ value: "CREATE", label: "CREATE" }],
+  };
 }

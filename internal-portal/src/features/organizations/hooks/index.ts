@@ -6,7 +6,8 @@ export {
   useUpdateOrganization,
   useOrgLifecycle,
   useAssignOrganizationCse,
+  useAccountLookup,
 } from "./useOrganizations";
 export { useOrgUsers, useCreateOrgUser, useOrgUserMutations } from "./useOrgUsers";
-export { useOrgAccounts, useCreateOrgAccount } from "./useOrgAccounts";
+export { useOrgAccounts, useOrgAccountMutations } from "./useOrgAccounts";
 export { useOrgDocuments, useUploadOrgDocument, useDocumentTypes } from "./useOrgDocuments";

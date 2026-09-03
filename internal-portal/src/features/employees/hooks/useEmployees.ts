@@ -31,3 +31,16 @@ export function useAssignUserRoles() {
     onSuccess: () => qc.invalidateQueries({ queryKey: employeeKeys.all }),
   });
 }
+
+export function useVerifyEmployeeId() {
+  return useMutation({
+    mutationFn: ({
+      type,
+      systemId,
+    }: {
+      type: "cse" | "engineer";
+      systemId: string;
+    }) =>
+      type === "cse" ? api.verifyCse(systemId) : api.verifyEngineer(systemId),
+  });
+}

@@ -6,6 +6,7 @@ export interface Employee {
   lastName: string | null;
   phone: string | null;
   crmSystemId?: string | null;
+  engineerSystemId?: string | null;
   status: string;
   roles: string[];
 }
@@ -18,5 +19,16 @@ export interface CreateEmployeeInput {
   lastName?: string;
   phone?: string;
   crmSystemId?: string;
+  engineerSystemId?: string;
   roles: string[];
+}
+
+export interface VerifyEmployeeIdResponse {
+  valid: boolean;
+  systemId?: string;
+  groups?: string[];
+  firstName?: string;
+  lastName?: string;
+  fullName?: string;
+  email?: string;
 }

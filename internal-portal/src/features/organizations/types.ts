@@ -82,12 +82,29 @@ export interface OrganizationWritePayload {
   effectiveDate?: string;
   expiryDate?: string;
   assignedCseUserId?: string;
+  accountNumber?: string;
+  customerId?: string;
   accounts?: Array<{
     accountNo: string;
     currency: string;
     accountType: string;
     primary: boolean;
   }>;
+}
+
+export interface AccountLookupAccount {
+  accountNo: string;
+  currency: string;
+  accountType: string;
+  status: string;
+}
+
+export interface AccountLookupResponse {
+  found: boolean;
+  accountNumber?: string;
+  customerId?: string;
+  customerName?: string;
+  accounts?: AccountLookupAccount[];
 }
 
 export interface OrganizationUser {

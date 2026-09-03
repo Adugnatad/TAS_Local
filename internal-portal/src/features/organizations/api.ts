@@ -7,6 +7,7 @@ import type {
   OrgAccountInput,
   OrgDocument,
   DocumentTypeOption,
+  AccountLookupResponse,
   OrganizationDetail,
   OrganizationSummary,
   OrganizationUser,
@@ -131,6 +132,18 @@ export async function resetOrgUserPassword(
 export async function fetchOrgAccounts(orgId: string): Promise<OrgAccount[]> {
   const data = await apiClient<OrgAccount[] | { content: OrgAccount[] }>(
     `/organizations/${orgId}/accounts`,
+  );
+  return Array.isArray(data) ? data : data.content;
+}
+
+export async function lookupAccount(accountNumber: string): Promise<AccountLookupResponse> {
+  return apiClient("/organizations/account-lookup", { params: { accountNumber } });
+}
+
+export async function refreshOrgAccounts(orgId: string): Promise<OrgAccount[]> {
+  const data = await apiClient<OrgAccount[] | { content: OrgAccount[] }>(
+    `/organizations/${orgId}/accounts/refresh`,
+    { method: "POST" },
   );
   return Array.isArray(data) ? data : data.content;
 }

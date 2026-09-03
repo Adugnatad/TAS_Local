@@ -59,4 +59,11 @@ describe("formatOrgApiError", () => {
     expect(formatOrgApiError(new ApiError(409, "x", "ORG_NOT_VALIDATED"))).toMatch(/not validated/i);
     expect(formatOrgApiError(new ApiError(400, "x", "DOCUMENT_NAME_REQUIRED"))).toMatch(/Other/i);
   });
+
+  it("maps CBS account errors", () => {
+    expect(formatOrgApiError(new ApiError(400, "x", "ACCOUNT_REQUIRED"))).toMatch(/account number/i);
+    expect(formatOrgApiError(new ApiError(400, "x", "CUSTOMER_ID_REQUIRED"))).toMatch(/customer id/i);
+    expect(formatOrgApiError(new ApiError(400, "x", "CBS_ACCOUNT_NOT_FOUND"))).toMatch(/not found/i);
+    expect(formatOrgApiError(new ApiError(400, "x", "CBS_CUSTOMER_MISMATCH"))).toMatch(/does not match/i);
+  });
 });

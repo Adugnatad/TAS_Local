@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as api from "../api";
+import type { CreateApprovalRuleInput, SimulationRequest } from "../types";
 
 export function useMatrixMutations(orgId: string) {
   const qc = useQueryClient();
@@ -41,21 +42,36 @@ export function useMatrixMutations(orgId: string) {
       onSuccess: invalidate,
     }),
     createRule: useMutation({
-      mutationFn: (input: Parameters<typeof api.createRule>[1]) => api.createRule(orgId, input),
+      mutationFn: (input: CreateApprovalRuleInput) => api.createRule(orgId, input),
       onSuccess: invalidate,
     }),
     updateRule: useMutation({
       mutationFn: ({
         ruleId,
         ...input
-      }: {
-        ruleId: string;
-      } & Parameters<typeof api.updateRule>[2]) => api.updateRule(orgId, ruleId, input),
+      }: { ruleId: string } & CreateApprovalRuleInput) => api.updateRule(orgId, ruleId, input),
+      onSuccess: invalidate,
+    }),
+    deleteRule: useMutation({
+      mutationFn: (ruleId: string) => api.deleteRule(orgId, ruleId),
       onSuccess: invalidate,
     }),
     setRuleActive: useMutation({
       mutationFn: ({ ruleId, active }: { ruleId: string; active: boolean }) =>
         api.setRuleActive(orgId, ruleId, active),
+      onSuccess: invalidate,
+    }),
+    simulate: useMutation({
+      mutationFn: (input: SimulationRequest) => api.simulateMatrix(orgId, input),
+    }),
+    applyTemplate: useMutation({
+      mutationFn: ({
+        code,
+        defaultSignatoryGroupId,
+      }: {
+        code: string;
+        defaultSignatoryGroupId: string;
+      }) => api.applyApprovalTemplate(orgId, code, defaultSignatoryGroupId),
       onSuccess: invalidate,
     }),
   };

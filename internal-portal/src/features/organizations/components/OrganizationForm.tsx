@@ -6,15 +6,14 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { orgFormSchema, type OrgFormValues } from "../schemas";
-import { useCreateOrganization, useUpdateOrganization } from "../hooks";
-import type { OrganizationDetail, OrganizationWritePayload } from "../types";
+import { useAccountLookup, useCreateOrganization, useUpdateOrganization } from "../hooks";
+import type { AccountLookupResponse, OrganizationDetail, OrganizationWritePayload } from "../types";
 import { formatOrgApiError } from "../tin";
 import { useEmployees } from "@/features/employees/hooks";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
   Card,
@@ -38,9 +37,37 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
-function toPayload(values: OrgFormValues, includeAccount: boolean): OrganizationWritePayload {
+function toCreatePayload(
+  values: OrgFormValues,
+  customerId: string,
+): OrganizationWritePayload {
   const payload: OrganizationWritePayload = {
+    name: values.name,
+    accountNumber: values.accountNo,
+    customerId,
+    tin: values.tin || undefined,
+    phone: values.phone || undefined,
+    address: values.address || undefined,
+    crmSystemId: values.crmSystemId || undefined,
+    description: values.description || undefined,
+  };
+  if (values.assignedCseUserId) {
+    payload.assignedCseUserId = values.assignedCseUserId;
+  }
+  return payload;
+}
+
+function toUpdatePayload(values: OrgFormValues): OrganizationWritePayload {
+  return {
     name: values.name,
     tin: values.tin || undefined,
     phone: values.phone || undefined,
@@ -50,20 +77,6 @@ function toPayload(values: OrgFormValues, includeAccount: boolean): Organization
     effectiveDate: values.effectiveDate || undefined,
     expiryDate: values.expiryDate || undefined,
   };
-  if (values.assignedCseUserId) {
-    payload.assignedCseUserId = values.assignedCseUserId;
-  }
-  if (includeAccount && values.accountNo) {
-    payload.accounts = [
-      {
-        accountNo: values.accountNo,
-        currency: values.currency || "ETB",
-        accountType: values.accountType || "CURRENT",
-        primary: values.primary ?? true,
-      },
-    ];
-  }
-  return payload;
 }
 
 export function OrganizationForm({
@@ -77,7 +90,11 @@ export function OrganizationForm({
   const isEdit = Boolean(organization);
   const create = useCreateOrganization();
   const update = useUpdateOrganization(organization?.id ?? "");
+  const lookup = useAccountLookup();
   const [file, setFile] = useState<File | null>(null);
+  const [customerId, setCustomerId] = useState<string | null>(null);
+  const [lookupResult, setLookupResult] = useState<AccountLookupResponse | null>(null);
+  const [lookupError, setLookupError] = useState<string | null>(null);
   const employees = useEmployees({ page: 0, size: 100 });
   const cseOptions =
     employees.data?.content.filter(
@@ -104,15 +121,53 @@ export function OrganizationForm({
     },
   });
 
+  const accountFound = lookupResult?.found === true && Boolean(customerId);
+  const canCreate = accountFound;
+
+  async function onLookup() {
+    const accountNumber = form.getValues("accountNo")?.trim();
+    if (!accountNumber) {
+      setLookupError("Enter an account number to look up.");
+      setLookupResult(null);
+      setCustomerId(null);
+      return;
+    }
+    setLookupError(null);
+    try {
+      const result = await lookup.mutateAsync(accountNumber);
+      setLookupResult(result);
+      if (result.found && result.customerId) {
+        setCustomerId(result.customerId);
+        if (result.customerName) {
+          form.setValue("name", result.customerName);
+        }
+      } else {
+        setCustomerId(null);
+        setLookupError("Account not found.");
+      }
+    } catch (error) {
+      setLookupResult(null);
+      setCustomerId(null);
+      setLookupError(formatOrgApiError(error, "Lookup failed."));
+    }
+  }
+
   async function onSubmit(values: OrgFormValues) {
     try {
       if (isEdit && organization) {
-        const result = await update.mutateAsync(toPayload(values, false));
+        const result = await update.mutateAsync(toUpdatePayload(values));
         toast.success("Organization updated.");
         if (result.warnings?.length) toast.message(result.warnings.join(" · "));
         router.push(`/organizations/${organization.id}`);
       } else {
-        const result = await create.mutateAsync({ payload: toPayload(values, true), file });
+        if (!customerId) {
+          toast.error("Look up and confirm the account before creating.");
+          return;
+        }
+        const result = await create.mutateAsync({
+          payload: toCreatePayload(values, customerId),
+          file,
+        });
         toast.success("Organization created.");
         if (result.warnings?.length) toast.message(result.warnings.join(" · "));
         router.push(`/organizations/${result.id}`);
@@ -224,32 +279,36 @@ export function OrganizationForm({
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="effectiveDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Effective date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="expiryDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Expiry date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {isEdit && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="effectiveDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Effective date</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="expiryDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Expiry date</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
               {!isEdit && (
                 <>
                   <FormField
@@ -293,56 +352,67 @@ export function OrganizationForm({
                     control={form.control}
                     name="accountNo"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className="sm:col-span-2">
                         <FormLabel>Account number</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
+                        <div className="flex gap-2">
+                          <FormControl>
+                            <Input
+                              placeholder="13-digit account number"
+                              {...field}
+                              onChange={(e) => {
+                                field.onChange(e);
+                                setLookupResult(null);
+                                setCustomerId(null);
+                                setLookupError(null);
+                              }}
+                            />
+                          </FormControl>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            disabled={lookup.isPending}
+                            onClick={() => void onLookup()}
+                          >
+                            Look up
+                          </Button>
+                        </div>
+                        {lookupError && (
+                          <p className="text-sm text-destructive">{lookupError}</p>
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="currency"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Currency</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="accountType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Account type</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="primary"
-                    render={({ field }) => (
-                      <FormItem className="flex items-center gap-2 space-y-0 pt-8">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onChange={(e) => field.onChange(e.target.checked)}
-                          />
-                        </FormControl>
-                        <FormLabel>Primary account</FormLabel>
-                      </FormItem>
-                    )}
-                  />
+                  {lookupResult?.found && lookupResult.accounts?.length && (
+                    <div className="sm:col-span-2 space-y-2">
+                      <p className="text-sm font-medium">
+                        Customer: {lookupResult.customerName ?? lookupResult.customerId}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        The following accounts will be auto-registered from core banking:
+                      </p>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Account</TableHead>
+                            <TableHead>Currency</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {lookupResult.accounts.map((account) => (
+                            <TableRow key={account.accountNo}>
+                              <TableCell>{account.accountNo}</TableCell>
+                              <TableCell>{account.currency}</TableCell>
+                              <TableCell>{account.accountType}</TableCell>
+                              <TableCell>{account.status}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
                   <div className="sm:col-span-2 space-y-2">
                     <Label htmlFor="license">Business license (optional)</Label>
                     <Input
@@ -359,7 +429,10 @@ export function OrganizationForm({
               <Button type="button" variant="outline" onClick={() => router.back()}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={create.isPending || update.isPending}>
+              <Button
+                type="submit"
+                disabled={create.isPending || update.isPending || (!isEdit && !canCreate)}
+              >
                 {isEdit ? "Save changes" : "Create"}
               </Button>
             </CardFooter>

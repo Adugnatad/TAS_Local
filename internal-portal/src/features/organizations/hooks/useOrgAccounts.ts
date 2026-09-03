@@ -10,26 +10,15 @@ export function useOrgAccounts(orgId: string) {
   });
 }
 
-export function useCreateOrgAccount(orgId: string) {
+export function useOrgAccountMutations(orgId: string) {
   const qc = useQueryClient();
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: orgKeys.accounts(orgId) });
     qc.invalidateQueries({ queryKey: orgKeys.detail(orgId) });
   };
   return {
-    create: useMutation({
-      mutationFn: (input: Parameters<typeof api.createOrgAccount>[1]) =>
-        api.createOrgAccount(orgId, input),
-      onSuccess: invalidate,
-    }),
-    update: useMutation({
-      mutationFn: ({
-        accountId,
-        input,
-      }: {
-        accountId: string;
-        input: Parameters<typeof api.updateOrgAccount>[2];
-      }) => api.updateOrgAccount(orgId, accountId, input),
+    refresh: useMutation({
+      mutationFn: () => api.refreshOrgAccounts(orgId),
       onSuccess: invalidate,
     }),
     setPrimary: useMutation({

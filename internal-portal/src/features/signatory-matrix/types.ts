@@ -3,15 +3,21 @@ export interface SignatoryGroup {
   name: string;
   description?: string | null;
   status?: string;
+  organizationId?: string;
+  members?: number;
+  rules?: number;
 }
 
 export interface SignatoryMember {
   id: string;
   userId: string;
   username?: string;
+  email?: string;
+  fullName?: string;
   firstName?: string;
   lastName?: string;
   order?: number;
+  approvalOrder?: number;
 }
 
 export type RoleMatch = "all" | "any";
@@ -54,14 +60,128 @@ export interface MatrixPreviewResult {
   summary: string;
 }
 
+export type ConditionTreeNode =
+  | { type: "GROUP"; groupId: string; minApprovals: number }
+  | { type: "AND"; children: ConditionTreeNode[] }
+  | { type: "OR"; children: ConditionTreeNode[] };
+
+export type TransactionType = "PER_TRANSACTION" | "AGGREGATE_DAILY" | "AGGREGATE_MONTHLY";
+export type RangeType = "UPTO" | "ABOVE" | "BETWEEN";
+export type Sequencing = "SEQUENTIAL" | "PARALLEL";
+
+export interface RuleEscalation {
+  timeoutHours?: number;
+  escalateTo?: string;
+}
+
 export interface ApprovalRule {
   id: string;
+  organizationId?: string;
   approvalType: string;
   approvalAction: string;
+  transactionType?: TransactionType;
+  rangeType?: RangeType;
   minAmount: number;
   maxAmount: number;
-  signatoryGroupId: string;
+  currency?: string | null;
+  sequencing?: Sequencing;
+  approvalRequired?: boolean;
+  signatoryGroupId?: string;
+  signatoryGroupName?: string | null;
+  conditionTree?: ConditionTreeNode | null;
+  escalation?: RuleEscalation | null;
+  effectiveFrom?: string | null;
+  effectiveTo?: string | null;
   status?: string;
+}
+
+export interface CreateApprovalRuleInput {
+  approvalType: string;
+  approvalAction: string;
+  transactionType?: TransactionType;
+  rangeType?: RangeType;
+  minAmount: number;
+  maxAmount: number;
+  currency?: string;
+  sequencing?: Sequencing;
+  approvalRequired?: boolean;
+  signatoryGroupId?: string;
+  conditionTree?: ConditionTreeNode | null;
+  escalation?: RuleEscalation | null;
+  effectiveFrom?: string | null;
+  effectiveTo?: string | null;
+}
+
+export interface SimulationRequest {
+  approvalType: string;
+  approvalAction: string;
+  amount: number;
+  currency?: string;
+  transactionType?: TransactionType;
+  at?: string;
+  dailyTotal?: number;
+  monthlyTotal?: number;
+}
+
+export interface SimulationInvolvedGroup {
+  groupId: string;
+  name: string;
+  minApprovals: number;
+  eligibleActiveMembers: number;
+  sufficient: boolean;
+}
+
+export interface SimulationResponse {
+  approvalRequired: boolean;
+  ambiguous: boolean;
+  matchedRuleId?: string;
+  reason?: string;
+  requiredCondition?: ConditionTreeNode;
+  involvedGroups?: SimulationInvolvedGroup[];
+}
+
+export interface MatrixAuditEntry {
+  id: string;
+  entityType: string;
+  entityId: string;
+  action: "CREATE" | "UPDATE" | "DELETE";
+  before?: unknown;
+  after?: unknown;
+  summary: string;
+  changedBy: string;
+  changedByName?: string;
+  changedAt: string;
+}
+
+export interface ApprovalPolicyTemplateRule {
+  approvalType: string;
+  approvalAction: string;
+  transactionType?: TransactionType;
+  rangeType?: RangeType;
+  minAmount: number;
+  maxAmount: number;
+  currency?: string;
+  sequencing?: Sequencing;
+  approvalRequired?: boolean;
+}
+
+export interface ApprovalPolicyTemplate {
+  code: string;
+  name: string;
+  description?: string;
+  rules: ApprovalPolicyTemplateRule[];
+}
+
+export interface ApprovalFeature {
+  code: string;
+  label: string;
+  approvalType: string;
+  monetary: boolean;
+}
+
+export interface ApprovalTypesResponse {
+  approvalTypes: Array<{ value: string; label: string }>;
+  approvalActions: Array<{ value: string; label: string }>;
 }
 
 export interface MatrixEvaluation {

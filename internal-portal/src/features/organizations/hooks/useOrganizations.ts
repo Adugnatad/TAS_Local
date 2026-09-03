@@ -40,6 +40,12 @@ export function useUpdateOrganization(id: string) {
   });
 }
 
+export function useAccountLookup() {
+  return useMutation({
+    mutationFn: (accountNumber: string) => api.lookupAccount(accountNumber),
+  });
+}
+
 export function useOrgLifecycle(id: string) {
   const qc = useQueryClient();
   const invalidate = () => qc.invalidateQueries({ queryKey: orgKeys.all });

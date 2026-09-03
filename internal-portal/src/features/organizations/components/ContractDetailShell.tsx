@@ -101,6 +101,18 @@ export function ContractDetailShell({
             icon: ShieldCheck,
             match: "exact" as const,
           },
+          {
+            href: `/organizations/${orgId}/signatory/simulate`,
+            label: "Simulate",
+            icon: ShieldCheck,
+            match: "exact" as const,
+          },
+          {
+            href: `/organizations/${orgId}/signatory/audit`,
+            label: "Audit history",
+            icon: ShieldCheck,
+            match: "exact" as const,
+          },
         ]
       : []),
     {

@@ -66,5 +66,11 @@ export function formatOrgApiError(error: unknown, fallback = "Request failed."):
   if (error.code === "UNSUPPORTED_TYPE") return "Unsupported file type.";
   if (error.code === "FILE_TOO_LARGE") return "File is too large.";
   if (error.code === "EMPTY_FILE") return "File is empty.";
+  if (error.code === "ACCOUNT_REQUIRED") return "Account number is required.";
+  if (error.code === "CUSTOMER_ID_REQUIRED") return "Customer ID from account lookup is required.";
+  if (error.code === "CBS_ACCOUNT_NOT_FOUND") return "Account not found in core banking.";
+  if (error.code === "CBS_CUSTOMER_MISMATCH") {
+    return "Customer ID does not match the account in core banking.";
+  }
   return error.message;
 }
