@@ -6,14 +6,21 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
 import StatusPage from "@/app/(internal)/status/page";
 
+vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn(), push: vi.fn() }) }));
+vi.mock("@/features/auth/hooks/useSession", () => ({
+  useSession: () => ({
+    user: { userType: "EMPLOYEE", permissions: ["VIEW_ORGANIZATIONS"] },
+    isAuthenticated: true,
+    canAny: () => true,
+  }),
+}));
+
 function wrapper({ children }: { children: React.ReactNode }) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 }
-
-void wrapper;
 
 describe("StatusBadge", () => {
   it("renders organization status label", () => {
@@ -46,10 +53,20 @@ describe("ErrorState", () => {
 });
 
 describe("StatusPage", () => {
-  it("renders organization request status rows", () => {
-    render(<StatusPage />);
-    expect(screen.getByText("Organization request statuses")).toBeInTheDocument();
-    expect(screen.getByText("Pending review")).toBeInTheDocument();
-    expect(screen.getByText("Acme Manufacturing Corp.")).toBeInTheDocument();
+  it("renders loan process oversight", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(JSON.stringify([]), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          }),
+        ),
+    );
+    render(<StatusPage />, { wrapper });
+    expect(await screen.findByText("Loan process oversight")).toBeInTheDocument();
+    expect(await screen.findByText("No loan processes")).toBeInTheDocument();
   });
 });
