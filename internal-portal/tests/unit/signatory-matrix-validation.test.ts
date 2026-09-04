@@ -3,12 +3,21 @@ import {
   isPerTransactionOnlyApprovalType,
   isValidEffectiveDate,
   normalizeApprovalActions,
+  normalizeApprovalActionOptions,
   normalizeApprovalRule,
   normalizeMatrixEvaluation,
   transactionTypeForApprovalType,
 } from "@/features/signatory-matrix/validation";
 
 describe("signatory matrix API compatibility", () => {
+  it("normalizes string action options without collapsing checkbox identities", () => {
+    expect(normalizeApprovalActionOptions(["CREATE", "UPDATE", "CANCEL"])).toEqual([
+      { value: "CREATE", label: "CREATE" },
+      { value: "UPDATE", label: "UPDATE" },
+      { value: "CANCEL", label: "CANCEL" },
+    ]);
+  });
+
   it("prefers approvalActions and falls back to legacy approvalAction", () => {
     expect(
       normalizeApprovalActions({ approvalActions: ["CREATE", "UPDATE"], approvalAction: "CANCEL" }),

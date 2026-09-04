@@ -12,7 +12,11 @@ import type {
   SignatoryGroup,
   SignatoryMember,
 } from "./types";
-import { normalizeApprovalRule, normalizeMatrixEvaluation } from "./validation";
+import {
+  normalizeApprovalActionOptions,
+  normalizeApprovalRule,
+  normalizeMatrixEvaluation,
+} from "./validation";
 
 const base = (orgId: string) => `/organizations/${orgId}`;
 
@@ -219,7 +223,13 @@ export async function fetchApprovalTypes(): Promise<ApprovalTypesResponse> {
   >("/approval-types");
 
   if (data && typeof data === "object" && "approvalTypes" in data) {
-    return data as ApprovalTypesResponse;
+    const response = data as ApprovalTypesResponse & {
+      approvalActions?: Array<string | { value?: string; label?: string }>;
+    };
+    return {
+      approvalTypes: response.approvalTypes,
+      approvalActions: normalizeApprovalActionOptions(response.approvalActions ?? []),
+    };
   }
 
   const items = Array.isArray(data) ? data : ((data as { content: unknown[] }).content ?? []);

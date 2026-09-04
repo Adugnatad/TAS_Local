@@ -456,8 +456,9 @@ export function SignatoryRulesPanel({ orgId }: { orgId: string }) {
               <Label>Approval actions</Label>
               <div className="flex flex-wrap gap-3 pt-2">
                 {actionOptions.map((item) => (
-                  <label key={item.code} className="flex items-center gap-2 text-sm">
+                  <div key={item.code} className="flex items-center gap-2 text-sm">
                     <Checkbox
+                      id={`approval-action-${item.code}`}
                       checked={form.approvalActions.includes(item.code)}
                       onChange={(e) =>
                         setForm((prev) => ({
@@ -468,8 +469,10 @@ export function SignatoryRulesPanel({ orgId }: { orgId: string }) {
                         }))
                       }
                     />
-                    {item.label}
-                  </label>
+                    <Label htmlFor={`approval-action-${item.code}`} className="font-normal">
+                      {item.label || item.code}
+                    </Label>
+                  </div>
                 ))}
               </div>
             </div>

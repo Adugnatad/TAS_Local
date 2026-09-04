@@ -2,6 +2,18 @@ import type { ApprovalAction, ApprovalRule, MatrixEvaluation, TransactionType } 
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
+export function normalizeApprovalActionOptions(
+  actions: Array<string | { value?: string; label?: string }>,
+): Array<{ value: string; label: string }> {
+  return actions
+    .map((action) =>
+      typeof action === "string"
+        ? { value: action, label: action }
+        : { value: action.value ?? "", label: action.label ?? action.value ?? "" },
+    )
+    .filter((action) => action.value);
+}
+
 export function normalizeApprovalActions(value: {
   approvalActions?: ApprovalAction[] | null;
   approvalAction?: ApprovalAction | null;
