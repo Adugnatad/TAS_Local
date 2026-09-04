@@ -1,4 +1,4 @@
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "/api";
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api";
 
 export const OFFICER_ROLES = ["officer", "supervisor", "admin"] as const;
 export type OfficerRole = (typeof OFFICER_ROLES)[number];

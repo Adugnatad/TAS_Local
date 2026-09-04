@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-const PORTAL_CORE_URL = process.env.PORTAL_CORE_URL ?? "http://localhost:8080";
+const API_UPSTREAM_URL = process.env.API_UPSTREAM_URL ?? "http://localhost:8080/api/v1";
 
 const FORWARD_REQUEST_HEADERS = [
   "authorization",
@@ -17,12 +17,12 @@ const FORWARD_RESPONSE_HEADERS = [
 ] as const;
 
 /**
- * Forward a Next.js Route Handler request to Portal Core `/api/v1/{path}`.
+ * Forward a Next.js Route Handler request to the server-only API upstream.
  */
 export async function proxyToPortalCore(request: Request, path: string): Promise<Response> {
   const incomingUrl = new URL(request.url);
   const targetPath = path.replace(/^\/+/, "");
-  const targetUrl = new URL(`${PORTAL_CORE_URL}/api/v1/${targetPath}`);
+  const targetUrl = new URL(`${API_UPSTREAM_URL.replace(/\/$/, "")}/${targetPath}`);
   targetUrl.search = incomingUrl.search;
 
   const headers = new Headers();
@@ -53,12 +53,8 @@ export async function proxyToPortalCore(request: Request, path: string): Promise
       headers: responseHeaders,
     });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to reach Portal Core";
-    return NextResponse.json(
-      { message, code: "PORTAL_CORE_UNAVAILABLE" },
-      { status: 502 },
-    );
+    const message = error instanceof Error ? error.message : "Failed to reach Portal Core";
+    return NextResponse.json({ message, code: "PORTAL_CORE_UNAVAILABLE" }, { status: 502 });
   }
 }
 
@@ -82,9 +78,7 @@ export function portalHandlers(
     return proxyToPortalCore(request, resolvePath(params));
   };
 
-  const exports: Partial<
-    Record<"GET" | "POST" | "PUT" | "PATCH" | "DELETE", typeof handler>
-  > = {};
+  const exports: Partial<Record<"GET" | "POST" | "PUT" | "PATCH" | "DELETE", typeof handler>> = {};
   for (const method of methods) {
     exports[method] = handler;
   }
