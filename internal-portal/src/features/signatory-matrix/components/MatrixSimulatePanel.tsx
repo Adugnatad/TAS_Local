@@ -2,12 +2,9 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import {
-  useApprovalTypeOptions,
-  useCurrencies,
-  useMatrixMutations,
-} from "../hooks";
+import { useApprovalTypeOptions, useCurrencies, useMatrixMutations } from "../hooks";
 import type { SimulationResponse, TransactionType } from "../types";
+import { isPerTransactionOnlyApprovalType, transactionTypeForApprovalType } from "../validation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -55,10 +52,10 @@ export function MatrixSimulatePanel({ orgId }: { orgId: string }) {
     try {
       const response = await mutations.simulate.mutateAsync({
         approvalType,
-        approvalAction,
+        approvalActions: [approvalAction],
         amount: parsedAmount,
         currency,
-        transactionType,
+        transactionType: transactionTypeForApprovalType(approvalType, transactionType),
       });
       setResult(response);
     } catch (error) {
@@ -78,7 +75,14 @@ export function MatrixSimulatePanel({ orgId }: { orgId: string }) {
       <div className="grid gap-3 sm:grid-cols-2 max-w-2xl">
         <div className="space-y-1">
           <Label>Approval type</Label>
-          <Select value={approvalType} onValueChange={(v) => v && setApprovalType(v)}>
+          <Select
+            value={approvalType}
+            onValueChange={(v) => {
+              if (!v) return;
+              setApprovalType(v);
+              setTransactionType((current) => transactionTypeForApprovalType(v, current));
+            }}
+          >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -110,13 +114,19 @@ export function MatrixSimulatePanel({ orgId }: { orgId: string }) {
           <Label>Transaction type</Label>
           <Select
             value={transactionType}
-            onValueChange={(v) => v && setTransactionType(v as TransactionType)}
+            onValueChange={(v) =>
+              v &&
+              setTransactionType(transactionTypeForApprovalType(approvalType, v as TransactionType))
+            }
           >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {TRANSACTION_TYPES.map((item) => (
+              {TRANSACTION_TYPES.filter(
+                (item) =>
+                  !isPerTransactionOnlyApprovalType(approvalType) || item === "PER_TRANSACTION",
+              ).map((item) => (
                 <SelectItem key={item} value={item}>
                   {item}
                 </SelectItem>

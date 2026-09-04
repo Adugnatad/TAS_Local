@@ -68,6 +68,7 @@ export type ConditionTreeNode =
 export type TransactionType = "PER_TRANSACTION" | "AGGREGATE_DAILY" | "AGGREGATE_MONTHLY";
 export type RangeType = "UPTO" | "ABOVE" | "BETWEEN";
 export type Sequencing = "SEQUENTIAL" | "PARALLEL";
+export type ApprovalAction = "CREATE" | "UPDATE" | "CANCEL" | string;
 
 export interface RuleEscalation {
   timeoutHours?: number;
@@ -78,7 +79,8 @@ export interface ApprovalRule {
   id: string;
   organizationId?: string;
   approvalType: string;
-  approvalAction: string;
+  approvalActions: ApprovalAction[];
+  approvalAction?: ApprovalAction;
   transactionType?: TransactionType;
   rangeType?: RangeType;
   minAmount: number;
@@ -97,7 +99,7 @@ export interface ApprovalRule {
 
 export interface CreateApprovalRuleInput {
   approvalType: string;
-  approvalAction: string;
+  approvalActions: ApprovalAction[];
   transactionType?: TransactionType;
   rangeType?: RangeType;
   minAmount: number;
@@ -114,7 +116,7 @@ export interface CreateApprovalRuleInput {
 
 export interface SimulationRequest {
   approvalType: string;
-  approvalAction: string;
+  approvalActions: ApprovalAction[];
   amount: number;
   currency?: string;
   transactionType?: TransactionType;
@@ -155,7 +157,8 @@ export interface MatrixAuditEntry {
 
 export interface ApprovalPolicyTemplateRule {
   approvalType: string;
-  approvalAction: string;
+  approvalActions: ApprovalAction[];
+  approvalAction?: ApprovalAction;
   transactionType?: TransactionType;
   rangeType?: RangeType;
   minAmount: number;
@@ -191,7 +194,8 @@ export interface MatrixEvaluation {
   authorized?: boolean;
   amount?: number;
   approvalType?: string;
-  approvalAction?: string;
+  approvalActions?: ApprovalAction[];
+  approvalAction?: ApprovalAction;
   requestRef?: string;
   matchedRuleId?: string;
   signatoryGroupId?: string;

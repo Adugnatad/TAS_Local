@@ -12,6 +12,7 @@ import type {
   SignatoryGroup,
   SignatoryMember,
 } from "./types";
+import { normalizeApprovalRule, normalizeMatrixEvaluation } from "./validation";
 
 const base = (orgId: string) => `/organizations/${orgId}`;
 
@@ -99,14 +100,18 @@ export async function fetchRules(
     `${base(orgId)}/approval-rules`,
     { params },
   );
-  return asArray(data);
+  return asArray(data).map(normalizeApprovalRule);
 }
 
 export async function createRule(
   orgId: string,
   input: CreateApprovalRuleInput,
 ): Promise<ApprovalRule> {
-  return apiClient(`${base(orgId)}/approval-rules`, { method: "POST", body: input });
+  const rule = await apiClient<ApprovalRule>(`${base(orgId)}/approval-rules`, {
+    method: "POST",
+    body: input,
+  });
+  return normalizeApprovalRule(rule);
 }
 
 export async function updateRule(
@@ -114,7 +119,11 @@ export async function updateRule(
   ruleId: string,
   input: CreateApprovalRuleInput,
 ): Promise<ApprovalRule> {
-  return apiClient(`${base(orgId)}/approval-rules/${ruleId}`, { method: "PUT", body: input });
+  const rule = await apiClient<ApprovalRule>(`${base(orgId)}/approval-rules/${ruleId}`, {
+    method: "PUT",
+    body: input,
+  });
+  return normalizeApprovalRule(rule);
 }
 
 export async function deleteRule(orgId: string, ruleId: string): Promise<void> {
@@ -147,9 +156,9 @@ export async function fetchMatrixAudit(orgId: string): Promise<MatrixAuditEntry[
 }
 
 export async function fetchApprovalTemplates(): Promise<ApprovalPolicyTemplate[]> {
-  const data = await apiClient<
-    ApprovalPolicyTemplate[] | { content: ApprovalPolicyTemplate[] }
-  >("/approval-policy-templates");
+  const data = await apiClient<ApprovalPolicyTemplate[] | { content: ApprovalPolicyTemplate[] }>(
+    "/approval-policy-templates",
+  );
   return asArray(data);
 }
 
@@ -162,7 +171,7 @@ export async function applyApprovalTemplate(
     `${base(orgId)}/matrix/templates/${code}/apply`,
     { method: "POST", body: { defaultSignatoryGroupId } },
   );
-  return asArray(data);
+  return asArray(data).map(normalizeApprovalRule);
 }
 
 export async function fetchApprovalFeatures(): Promise<ApprovalFeature[]> {
@@ -173,21 +182,33 @@ export async function fetchApprovalFeatures(): Promise<ApprovalFeature[]> {
 }
 
 export async function fetchCurrencies(): Promise<string[]> {
-  const data = await apiClient<
-    string[] | { content: string[] } | { currencies: string[] }
-  >("/currencies");
+  const data = await apiClient<string[] | { content: string[] } | { currencies: string[] }>(
+    "/currencies",
+  );
   if (Array.isArray(data)) return data;
   if ("currencies" in data && Array.isArray(data.currencies)) return data.currencies;
   if ("content" in data && Array.isArray(data.content)) return data.content;
   return [];
 }
 
-export async function fetchEvaluation(orgId: string, evaluationId: string): Promise<MatrixEvaluation> {
-  return apiClient(`${base(orgId)}/matrix/evaluations/${evaluationId}`);
+export async function fetchEvaluation(
+  orgId: string,
+  evaluationId: string,
+): Promise<MatrixEvaluation> {
+  const evaluation = await apiClient<MatrixEvaluation>(
+    `${base(orgId)}/matrix/evaluations/${evaluationId}`,
+  );
+  return normalizeMatrixEvaluation(evaluation);
 }
 
-export async function fetchAuthorized(orgId: string, requestRef: string): Promise<MatrixEvaluation> {
-  return apiClient(`${base(orgId)}/matrix/authorized`, { params: { requestRef } });
+export async function fetchAuthorized(
+  orgId: string,
+  requestRef: string,
+): Promise<MatrixEvaluation> {
+  const evaluation = await apiClient<MatrixEvaluation>(`${base(orgId)}/matrix/authorized`, {
+    params: { requestRef },
+  });
+  return normalizeMatrixEvaluation(evaluation);
 }
 
 export async function fetchApprovalTypes(): Promise<ApprovalTypesResponse> {
@@ -201,7 +222,7 @@ export async function fetchApprovalTypes(): Promise<ApprovalTypesResponse> {
     return data as ApprovalTypesResponse;
   }
 
-  const items = Array.isArray(data) ? data : (data as { content: unknown[] }).content ?? [];
+  const items = Array.isArray(data) ? data : ((data as { content: unknown[] }).content ?? []);
   const approvalTypes = items
     .map((item) => {
       if (typeof item === "string") return { value: item, label: item };
@@ -214,6 +235,6 @@ export async function fetchApprovalTypes(): Promise<ApprovalTypesResponse> {
 
   return {
     approvalTypes,
-    approvalActions: [{ value: "CREATE", label: "CREATE" }],
+    approvalActions: ["CREATE", "UPDATE", "CANCEL"].map((value) => ({ value, label: value })),
   };
 }

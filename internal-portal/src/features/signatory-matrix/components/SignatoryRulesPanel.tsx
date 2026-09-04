@@ -10,7 +10,14 @@ import {
   useMatrixMutations,
   useSignatoryGroups,
 } from "../hooks";
-import type { ApprovalRule, CreateApprovalRuleInput, RangeType, Sequencing, TransactionType } from "../types";
+import type {
+  ApprovalAction,
+  ApprovalRule,
+  CreateApprovalRuleInput,
+  RangeType,
+  Sequencing,
+  TransactionType,
+} from "../types";
 import { ConditionTreeBuilder } from "./ConditionTreeBuilder";
 import { ApplyTemplateDialog } from "./ApplyTemplateDialog";
 import {
@@ -19,6 +26,11 @@ import {
   serializeBuilderState,
   type ConditionBuilderState,
 } from "../utils/condition-tree";
+import {
+  isPerTransactionOnlyApprovalType,
+  isValidEffectiveDate,
+  transactionTypeForApprovalType,
+} from "../validation";
 import { useSession } from "@/features/auth/hooks/useSession";
 import { ApiError } from "@/lib/api-client";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -67,7 +79,7 @@ const SEQUENCING_OPTIONS: Sequencing[] = ["SEQUENTIAL", "PARALLEL"];
 
 type RuleFormState = {
   approvalType: string;
-  approvalAction: string;
+  approvalActions: ApprovalAction[];
   transactionType: TransactionType;
   rangeType: RangeType;
   minAmount: string;
@@ -84,7 +96,7 @@ type RuleFormState = {
 function emptyForm(approvalType = "LOAN_APPLICATION"): RuleFormState {
   return {
     approvalType,
-    approvalAction: "CREATE",
+    approvalActions: ["CREATE"],
     transactionType: "PER_TRANSACTION",
     rangeType: "BETWEEN",
     minAmount: "0",
@@ -102,8 +114,15 @@ function emptyForm(approvalType = "LOAN_APPLICATION"): RuleFormState {
 function ruleToForm(rule: ApprovalRule): RuleFormState {
   return {
     approvalType: rule.approvalType,
-    approvalAction: rule.approvalAction,
-    transactionType: rule.transactionType ?? "PER_TRANSACTION",
+    approvalActions: rule.approvalActions?.length
+      ? rule.approvalActions
+      : rule.approvalAction
+        ? [rule.approvalAction]
+        : ["CREATE"],
+    transactionType: transactionTypeForApprovalType(
+      rule.approvalType,
+      rule.transactionType ?? "PER_TRANSACTION",
+    ),
     rangeType: rule.rangeType ?? "BETWEEN",
     minAmount: String(rule.minAmount ?? 0),
     maxAmount: String(rule.maxAmount ?? 0),
@@ -129,6 +148,9 @@ function formatRuleApiError(error: unknown): string {
     error.code === "INVALID_BAND"
   ) {
     return error.message;
+  }
+  if (error.code === "AGGREGATE_NOT_ALLOWED") {
+    return "Loan and trade approvals must use PER_TRANSACTION.";
   }
   return error.message || "Save failed.";
 }
@@ -190,17 +212,33 @@ export function SignatoryRulesPanel({ orgId }: { orgId: string }) {
       setFormError("Enter valid min and max amounts.");
       return null;
     }
+    if (!form.approvalActions.length) {
+      setFormError("Select at least one approval action.");
+      return null;
+    }
+    if (!isValidEffectiveDate(form.effectiveFrom) || !isValidEffectiveDate(form.effectiveTo)) {
+      setFormError("Effective dates must use YYYY-MM-DD format.");
+      return null;
+    }
+    if (form.effectiveFrom && form.effectiveTo && form.effectiveFrom > form.effectiveTo) {
+      setFormError("Effective from must be on or before effective to.");
+      return null;
+    }
 
     const approverPayload = serializeBuilderState(builderState);
-    if (form.approvalRequired && !approverPayload.signatoryGroupId && !approverPayload.conditionTree) {
+    if (
+      form.approvalRequired &&
+      !approverPayload.signatoryGroupId &&
+      !approverPayload.conditionTree
+    ) {
       setFormError("Select at least one signatory group when approval is required.");
       return null;
     }
 
     const payload: CreateApprovalRuleInput = {
       approvalType: form.approvalType,
-      approvalAction: form.approvalAction,
-      transactionType: form.transactionType,
+      approvalActions: form.approvalActions,
+      transactionType: transactionTypeForApprovalType(form.approvalType, form.transactionType),
       rangeType: form.rangeType,
       minAmount,
       maxAmount,
@@ -219,9 +257,7 @@ export function SignatoryRulesPanel({ orgId }: { orgId: string }) {
 
     if (form.escalationTimeoutHours || form.escalationTo) {
       payload.escalation = {
-        timeoutHours: form.escalationTimeoutHours
-          ? Number(form.escalationTimeoutHours)
-          : undefined,
+        timeoutHours: form.escalationTimeoutHours ? Number(form.escalationTimeoutHours) : undefined,
         escalateTo: form.escalationTo || undefined,
       };
     }
@@ -330,7 +366,7 @@ export function SignatoryRulesPanel({ orgId }: { orgId: string }) {
               {rules.data.map((rule) => (
                 <TableRow key={rule.id}>
                   <TableCell className="font-mono text-xs">{rule.approvalType}</TableCell>
-                  <TableCell>{rule.approvalAction}</TableCell>
+                  <TableCell>{rule.approvalActions.join(", ")}</TableCell>
                   <TableCell className="tabular-nums text-sm">
                     {rule.minAmount} – {rule.maxAmount} {rule.currency ?? "ETB"}
                   </TableCell>
@@ -339,15 +375,11 @@ export function SignatoryRulesPanel({ orgId }: { orgId: string }) {
                       groupNameById.get(rule.signatoryGroupId ?? "") ??
                       (rule.conditionTree ? "Condition tree" : "—")}
                   </TableCell>
-                  <TableCell>
-                    {rule.status ? <StatusBadge status={rule.status} /> : "—"}
-                  </TableCell>
+                  <TableCell>{rule.status ? <StatusBadge status={rule.status} /> : "—"}</TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger
-                        render={
-                          <Button variant="ghost" size="icon-sm" aria-label="Rule actions" />
-                        }
+                        render={<Button variant="ghost" size="icon-sm" aria-label="Rule actions" />}
                       >
                         <MoreVertical className="size-4" />
                       </DropdownMenuTrigger>
@@ -400,7 +432,12 @@ export function SignatoryRulesPanel({ orgId }: { orgId: string }) {
               <Select
                 value={form.approvalType}
                 onValueChange={(value) =>
-                  value && setForm((prev) => ({ ...prev, approvalType: value }))
+                  value &&
+                  setForm((prev) => ({
+                    ...prev,
+                    approvalType: value,
+                    transactionType: transactionTypeForApprovalType(value, prev.transactionType),
+                  }))
                 }
               >
                 <SelectTrigger>
@@ -416,24 +453,25 @@ export function SignatoryRulesPanel({ orgId }: { orgId: string }) {
               </Select>
             </div>
             <div className="space-y-1">
-              <Label>Approval action</Label>
-              <Select
-                value={form.approvalAction}
-                onValueChange={(value) =>
-                  value && setForm((prev) => ({ ...prev, approvalAction: value }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {actionOptions.map((item) => (
-                    <SelectItem key={item.code} value={item.code}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Approval actions</Label>
+              <div className="flex flex-wrap gap-3 pt-2">
+                {actionOptions.map((item) => (
+                  <label key={item.code} className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={form.approvalActions.includes(item.code)}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          approvalActions: e.target.checked
+                            ? [...prev.approvalActions, item.code]
+                            : prev.approvalActions.filter((action) => action !== item.code),
+                        }))
+                      }
+                    />
+                    {item.label}
+                  </label>
+                ))}
+              </div>
             </div>
             <div className="space-y-1">
               <Label>Transaction type</Label>
@@ -448,7 +486,11 @@ export function SignatoryRulesPanel({ orgId }: { orgId: string }) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {TRANSACTION_TYPES.map((item) => (
+                  {TRANSACTION_TYPES.filter(
+                    (item) =>
+                      !isPerTransactionOnlyApprovalType(form.approvalType) ||
+                      item === "PER_TRANSACTION",
+                  ).map((item) => (
                     <SelectItem key={item} value={item}>
                       {item}
                     </SelectItem>
@@ -579,9 +621,7 @@ export function SignatoryRulesPanel({ orgId }: { orgId: string }) {
                 onChange={setBuilderState}
               />
             </div>
-            {formError && (
-              <p className="sm:col-span-2 text-sm text-destructive">{formError}</p>
-            )}
+            {formError && <p className="sm:col-span-2 text-sm text-destructive">{formError}</p>}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
