@@ -13,12 +13,7 @@ interface PermissionGuardProps {
   redirectTo?: string;
 }
 
-export function PermissionGuard({
-  anyOf,
-  children,
-  fallback,
-  redirectTo,
-}: PermissionGuardProps) {
+export function PermissionGuard({ anyOf, children, fallback, redirectTo }: PermissionGuardProps) {
   const { user, isAuthenticated, canAny } = useSession();
   const router = useRouter();
   const isAllowed = !anyOf || anyOf.length === 0 || canAny(...anyOf);
@@ -63,5 +58,19 @@ export function PermissionGate({
 }) {
   const { canAny } = useSession();
   if (!canAny(...anyOf)) return null;
+  return <>{children}</>;
+}
+
+export function RoleGuard({
+  roles,
+  children,
+}: {
+  roles: readonly string[];
+  children: React.ReactNode;
+}) {
+  const { user, isAuthenticated } = useSession();
+  const isAllowed = user?.roles?.some((role) => roles.includes(role));
+
+  if (!isAuthenticated || !isAllowed) return null;
   return <>{children}</>;
 }

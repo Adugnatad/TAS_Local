@@ -2,14 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Building2,
-  LogOut,
-  Menu,
-  Shield,
-  UserRound,
-  Users,
-} from "lucide-react";
+import { Building2, LogOut, Menu, Shield, UserRound, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/constants";
 import { useSession } from "@/features/auth/hooks/useSession";
@@ -31,21 +24,22 @@ function BrandMark() {
   return (
     <Link href="/organizations" className="flex min-w-0 flex-col gap-1.5">
       <BrandLogo className="p-1.5" imageClassName="h-8 w-auto max-w-[168px]" />
-      <span className="text-[11px] font-medium tracking-wide text-sidebar-muted">
-        TAS Portal
-      </span>
+      <span className="text-[11px] font-medium tracking-wide text-sidebar-muted">TAS Portal</span>
     </Link>
   );
 }
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
-  const { canAny } = useSession();
+  const { user, canAny } = useSession();
+  const isBankEngineer = user?.roles?.includes("BankEngineer") ?? false;
 
   return (
     <nav className="flex flex-col gap-0.5" aria-label="Main navigation">
       {NAV_ITEMS.filter(
-        (item) => item.permissions.length === 0 || canAny(...item.permissions),
+        (item) =>
+          (item.permissions.length === 0 || canAny(...item.permissions)) &&
+          (item.href !== "/engineer-tasks" || isBankEngineer),
       ).map((item) => {
         const Icon = iconMap[item.href] ?? Building2;
         const isActive = pathname.startsWith(item.href);

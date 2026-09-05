@@ -7,6 +7,12 @@ export async function fetchLoanProcesses(): Promise<LoanProcessCollection> {
   });
 }
 
+export async function fetchMyLoanProcesses(): Promise<LoanProcessCollection> {
+  return apiClient("/my-organization/loan-tracking/processes", {
+    params: { includeClosed: true },
+  });
+}
+
 export function fetchLoanProcess(applicationId: string): Promise<LoanProcess> {
   return apiClient(`/loans/processes/${encodeURIComponent(applicationId)}`);
 }

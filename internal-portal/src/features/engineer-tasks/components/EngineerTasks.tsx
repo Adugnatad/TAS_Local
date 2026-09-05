@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   CalendarDays,
@@ -21,48 +22,32 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { ErrorState } from "@/components/shared/ErrorState";
+import { completeEngineerTask, fetchEngineerTask, fetchEngineerTasks } from "../api";
+import type { EngineerTask as Task } from "../api";
 
 type TaskKind = "estimation" | "appointment";
-type Task = {
-  id: string;
-  kind: TaskKind;
-  name: string;
-  description: string;
-  collateralId: string;
-  collateralType: string;
-  location: string;
-  received: string;
-};
-
-const initialTasks: Task[] = [
-  {
-    id: "ENG-24076",
-    kind: "appointment",
-    name: "Set valuation appointment",
-    description: "Confirm a suitable date for the collateral inspection visit.",
-    collateralId: "COL-88398",
-    collateralType: "Residential property",
-    location: "Kirkos, Addis Ababa",
-    received: "Yesterday, 15:18",
-  },
-  {
-    id: "ENG-24081",
-    kind: "estimation",
-    name: "Property valuation and estimation",
-    description: "Review the collateral details and submit an estimated property value.",
-    collateralId: "COL-88421",
-    collateralType: "Commercial property",
-    location: "Bole, Addis Ababa",
-    received: "Today, 09:42",
-  },
-];
-
 const fieldClass = "h-10 bg-background";
 
 export function EngineerTasks() {
-  const [tasks, setTasks] = useState(initialTasks);
+  const queryClient = useQueryClient();
+  const tasksQuery = useQuery({ queryKey: ["engineer-tasks"], queryFn: fetchEngineerTasks });
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [query, setQuery] = useState("");
+  const detailQuery = useQuery({
+    queryKey: ["engineer-task", selectedTask?.id],
+    queryFn: () => fetchEngineerTask(selectedTask!.id),
+    enabled: Boolean(selectedTask),
+  });
+  const completeMutation = useMutation({
+    mutationFn: ({ taskId, body }: { taskId: string; body: FormData }) =>
+      completeEngineerTask(taskId, body),
+    onSuccess: async () => {
+      setSelectedTask(null);
+      await queryClient.invalidateQueries({ queryKey: ["engineer-tasks"] });
+    },
+  });
+  const tasks = tasksQuery.data ?? [];
 
   const filteredTasks = useMemo(
     () =>
@@ -72,11 +57,9 @@ export function EngineerTasks() {
     [query, tasks],
   );
 
-  function completeTask() {
-    if (!selectedTask) return;
-    setTasks((current) => current.filter((task) => task.id !== selectedTask.id));
-    setSelectedTask(null);
-  }
+  if (tasksQuery.isLoading)
+    return <div className="p-6 text-sm text-muted-foreground">Loading tasks...</div>;
+  if (tasksQuery.isError) return <ErrorState onRetry={() => tasksQuery.refetch()} />;
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -171,9 +154,11 @@ export function EngineerTasks() {
 
       {selectedTask && (
         <TaskPanel
-          task={selectedTask}
+          task={detailQuery.data ?? selectedTask}
           onClose={() => setSelectedTask(null)}
-          onComplete={completeTask}
+          onComplete={(body) => completeMutation.mutate({ taskId: selectedTask.id, body })}
+          isSubmitting={completeMutation.isPending}
+          error={completeMutation.error}
         />
       )}
     </div>
@@ -184,14 +169,17 @@ function TaskPanel({
   task,
   onClose,
   onComplete,
+  isSubmitting,
+  error,
 }: {
   task: Task;
   onClose: () => void;
-  onComplete: () => void;
+  onComplete: (body: FormData) => void;
+  isSubmitting: boolean;
+  error: Error | null;
 }) {
   const [buildings, setBuildings] = useState(["Main building"]);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const [submitted, setSubmitted] = useState(false);
 
   return (
     <div
@@ -223,56 +211,48 @@ function TaskPanel({
           </Button>
         </div>
         <div className="flex-1 overflow-y-auto p-6">
-          {submitted ? (
-            <div className="flex min-h-[420px] flex-col items-center justify-center text-center">
-              <CheckCircle2 className="h-14 w-14 text-emerald-600" />
-              <h3 className="mt-5 text-xl font-semibold">Task submitted</h3>
-              <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-                The task has been completed and removed from your active queue.
-              </p>
-              <Button className="mt-6" onClick={onComplete}>
-                Return to task list
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              onComplete(new FormData(event.currentTarget));
+            }}
+            className="space-y-6"
+          >
+            <Card className="bg-muted/40">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Collateral context</CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-4 text-sm sm:grid-cols-2">
+                <div>
+                  <p className="text-xs text-muted-foreground">Collateral ID</p>
+                  <p className="mt-1 font-medium">{task.collateralId}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Location</p>
+                  <p className="mt-1 font-medium">{task.location}</p>
+                </div>
+              </CardContent>
+            </Card>
+            {task.kind === "appointment" ? (
+              <AppointmentFields date={date} setDate={setDate} />
+            ) : (
+              <EstimationFields buildings={buildings} setBuildings={setBuildings} />
+            )}
+            <Separator />
+            {error && <p className="text-sm text-destructive">{error.message}</p>}
+            <div className="flex justify-end gap-3">
+              <Button type="button" variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting
+                  ? "Submitting..."
+                  : task.kind === "appointment"
+                    ? "Set appointment"
+                    : "Submit valuation"}
               </Button>
             </div>
-          ) : (
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                setSubmitted(true);
-              }}
-              className="space-y-6"
-            >
-              <Card className="bg-muted/40">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm">Collateral context</CardTitle>
-                </CardHeader>
-                <CardContent className="grid gap-4 text-sm sm:grid-cols-2">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Collateral ID</p>
-                    <p className="mt-1 font-medium">{task.collateralId}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Location</p>
-                    <p className="mt-1 font-medium">{task.location}</p>
-                  </div>
-                </CardContent>
-              </Card>
-              {task.kind === "appointment" ? (
-                <AppointmentFields date={date} setDate={setDate} />
-              ) : (
-                <EstimationFields buildings={buildings} setBuildings={setBuildings} />
-              )}
-              <Separator />
-              <div className="flex justify-end gap-3">
-                <Button type="button" variant="outline" onClick={onClose}>
-                  Cancel
-                </Button>
-                <Button type="submit">
-                  {task.kind === "appointment" ? "Set appointment" : "Submit valuation"}
-                </Button>
-              </div>
-            </form>
-          )}
+          </form>
         </div>
       </div>
     </div>

@@ -9,7 +9,11 @@ import StatusPage from "@/app/(internal)/status/page";
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn(), push: vi.fn() }) }));
 vi.mock("@/features/auth/hooks/useSession", () => ({
   useSession: () => ({
-    user: { userType: "EMPLOYEE", permissions: ["VIEW_ORGANIZATIONS"] },
+    user: {
+      userType: "EMPLOYEE",
+      roles: ["admin", "BankAdmin"],
+      permissions: ["VIEW_ORGANIZATIONS"],
+    },
     isAuthenticated: true,
     canAny: () => true,
   }),
@@ -56,14 +60,12 @@ describe("StatusPage", () => {
   it("renders loan process oversight", async () => {
     vi.stubGlobal(
       "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response(JSON.stringify([]), {
-            status: 200,
-            headers: { "content-type": "application/json" },
-          }),
-        ),
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify([]), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      ),
     );
     render(<StatusPage />, { wrapper });
     expect(await screen.findByText("Loan process oversight")).toBeInTheDocument();
