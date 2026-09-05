@@ -26,8 +26,8 @@ import { ErrorState } from "@/components/shared/ErrorState";
 import { completeEngineerTask, fetchEngineerTask, fetchEngineerTasks } from "../api";
 import type { EngineerTask as Task } from "../api";
 
-type TaskKind = "estimation" | "appointment";
 const fieldClass = "h-10 bg-background";
+const emptyTasks: Task[] = [];
 
 export function EngineerTasks() {
   const queryClient = useQueryClient();
@@ -47,7 +47,7 @@ export function EngineerTasks() {
       await queryClient.invalidateQueries({ queryKey: ["engineer-tasks"] });
     },
   });
-  const tasks = tasksQuery.data ?? [];
+  const tasks = tasksQuery.data ?? emptyTasks;
 
   const filteredTasks = useMemo(
     () =>
