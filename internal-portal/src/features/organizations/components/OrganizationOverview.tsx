@@ -365,7 +365,7 @@ export function OrganizationOverview({ orgId }: { orgId: string }) {
                   const label = [
                     [employee.firstName, employee.lastName].filter(Boolean).join(" ") ||
                       employee.username,
-                    employee.crmSystemId ? `(${employee.crmSystemId})` : null,
+                    employee.email,
                   ]
                     .filter(Boolean)
                     .join(" ");

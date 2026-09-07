@@ -65,6 +65,7 @@ export interface OrganizationDetail {
   effectiveDate: string | null;
   expiryDate: string | null;
   description: string | null;
+  alwaysUseSellingPriceForFCYConvertion?: boolean;
   createdBy: string | null;
   activeUsers: number;
   accounts: OrgAccount[];
@@ -82,6 +83,7 @@ export interface OrganizationWritePayload {
   effectiveDate?: string;
   expiryDate?: string;
   assignedCseUserId?: string;
+  alwaysUseSellingPriceForFCYConvertion?: boolean;
   accountNumber?: string;
   customerId?: string;
   accounts?: Array<{

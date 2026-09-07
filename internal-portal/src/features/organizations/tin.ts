@@ -56,7 +56,6 @@ export function formatOrgApiError(error: unknown, fallback = "Request failed."):
   if (error.code === "NOT_A_CSE") return "Selected user is not a BankCSE employee.";
   if (error.code === "CSE_INACTIVE") return "Selected CSE is not active.";
   if (error.code === "TERMINATED") return "Cannot assign a CSE to a terminated organization.";
-  if (error.code === "CRM_ID_REQUIRED") return "CRM system ID is required for BankCSE employees.";
   if (error.code === "CRM_ID_EXISTS") return "This CRM system ID is already in use.";
   if (error.code === "DOCUMENT_TYPE_REQUIRED") return "Document type is required.";
   if (error.code === "UNKNOWN_DOCUMENT_TYPE") return "Unknown document type.";

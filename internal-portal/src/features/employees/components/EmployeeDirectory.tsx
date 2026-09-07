@@ -2,12 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { CheckCircle2 } from "lucide-react";
 import { useAssignUserRoles, useCreateEmployee, useEmployees, useVerifyEmployeeId } from "../hooks";
 import { formatEmployeeApiError } from "../errors";
+import { employeeFormSchema } from "../schemas";
 import type { Employee } from "../types";
 import { useRoles } from "@/features/roles/hooks";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -43,36 +43,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-const schema = z
-  .object({
-    username: z.string().min(1),
-    password: z.string().min(8),
-    email: z.string().email().optional().or(z.literal("")),
-    firstName: z.string().optional(),
-    lastName: z.string().optional(),
-    phone: z.string().optional(),
-    crmSystemId: z.string().optional(),
-    engineerSystemId: z.string().optional(),
-    roleNames: z.array(z.string()).min(1, "Select at least one role"),
-  })
-  .superRefine((values, ctx) => {
-    if (values.roleNames.includes("BankCSE") && !values.crmSystemId?.trim()) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "CRM system ID is required for BankCSE",
-        path: ["crmSystemId"],
-      });
-    }
-    if (values.roleNames.includes("BankEngineer") && !values.engineerSystemId?.trim()) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Engineer system ID is required for BankEngineer",
-        path: ["engineerSystemId"],
-      });
-    }
-  });
-
-type FormValues = z.infer<typeof schema>;
+type FormValues = import("../schemas").EmployeeFormValues;
 
 function employeeSystemId(employee: Employee): string {
   if (employee.crmSystemId) return employee.crmSystemId;
@@ -85,8 +56,8 @@ export function EmployeeDirectory() {
   const [open, setOpen] = useState(false);
   const [assigning, setAssigning] = useState<Employee | null>(null);
   const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]);
-  const [verifiedCrmId, setVerifiedCrmId] = useState<string | null>(null);
-  const [verifiedEngineerId, setVerifiedEngineerId] = useState<string | null>(null);
+  const [verifiedCseEmail, setVerifiedCseEmail] = useState<string | null>(null);
+  const [verifiedEngineerEmail, setVerifiedEngineerEmail] = useState<string | null>(null);
   const [crmVerifyError, setCrmVerifyError] = useState<string | null>(null);
   const [engineerVerifyError, setEngineerVerifyError] = useState<string | null>(null);
   const query = useEmployees({ page, size: 20 });
@@ -100,7 +71,7 @@ export function EmployeeDirectory() {
   );
 
   const form = useForm<FormValues>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(employeeFormSchema),
     defaultValues: {
       username: "",
       password: "",
@@ -114,21 +85,21 @@ export function EmployeeDirectory() {
     },
   });
   const roleNames = form.watch("roleNames");
-  const crmSystemIdValue = form.watch("crmSystemId");
-  const engineerSystemIdValue = form.watch("engineerSystemId");
+  const emailValue = form.watch("email");
   const requiresCrmId = roleNames.includes("BankCSE");
   const requiresEngineerId = roleNames.includes("BankEngineer");
+  const requiresEmailVerification = requiresCrmId || requiresEngineerId;
 
   const crmVerified =
-    !requiresCrmId || (verifiedCrmId !== null && verifiedCrmId === crmSystemIdValue?.trim());
+    !requiresCrmId || (verifiedCseEmail !== null && verifiedCseEmail === emailValue?.trim());
   const engineerVerified =
     !requiresEngineerId ||
-    (verifiedEngineerId !== null && verifiedEngineerId === engineerSystemIdValue?.trim());
+    (verifiedEngineerEmail !== null && verifiedEngineerEmail === emailValue?.trim());
   const canCreate = crmVerified && engineerVerified;
 
   function resetVerifyState() {
-    setVerifiedCrmId(null);
-    setVerifiedEngineerId(null);
+    setVerifiedCseEmail(null);
+    setVerifiedEngineerEmail(null);
     setCrmVerifyError(null);
     setEngineerVerifyError(null);
   }
@@ -148,59 +119,75 @@ export function EmployeeDirectory() {
     resetVerifyState();
   }
 
+  function explainVerificationFailure(result: {
+    coopStreamValid: boolean;
+    etradeChecked: boolean;
+    etradeValid: boolean;
+  }): string {
+    if (!result.coopStreamValid) return "Not found in CoopStream.";
+    if (result.etradeChecked && !result.etradeValid) {
+      return "Found in CoopStream but not in eTrade.";
+    }
+    return "This email could not be validated.";
+  }
+
+  function applyFullName(fullName: string | null | undefined) {
+    const names = fullName?.trim().split(/\s+/) ?? [];
+    if (names.length > 0 && names[0]) form.setValue("firstName", names[0]);
+    if (names.length > 1) form.setValue("lastName", names.slice(1).join(" "));
+  }
+
   async function onVerifyCse() {
-    const systemId = crmSystemIdValue?.trim();
-    if (!systemId) {
-      setCrmVerifyError("Enter a CRM system ID to verify.");
-      setVerifiedCrmId(null);
+    const email = emailValue?.trim();
+    if (!email) {
+      setCrmVerifyError("Enter an email address to verify.");
+      setVerifiedCseEmail(null);
       return;
     }
     setCrmVerifyError(null);
     try {
-      const result = await verify.mutateAsync({ type: "cse", systemId });
+      const result = await verify.mutateAsync({ type: "cse", email });
       if (!result.valid) {
-        setVerifiedCrmId(null);
-        setCrmVerifyError("No valid user with that id.");
+        setVerifiedCseEmail(null);
+        setCrmVerifyError(explainVerificationFailure(result));
         return;
       }
-      setVerifiedCrmId(systemId);
-      if (result.firstName) form.setValue("firstName", result.firstName);
-      if (result.lastName) form.setValue("lastName", result.lastName);
+      setVerifiedCseEmail(email);
       if (result.email) form.setValue("email", result.email);
+      applyFullName(result.fullName);
     } catch (error) {
-      setVerifiedCrmId(null);
+      setVerifiedCseEmail(null);
       setCrmVerifyError(formatEmployeeApiError(error, "Verification failed."));
     }
   }
 
   async function onVerifyEngineer() {
-    const systemId = engineerSystemIdValue?.trim();
-    if (!systemId) {
-      setEngineerVerifyError("Enter an engineer system ID to verify.");
-      setVerifiedEngineerId(null);
+    const email = emailValue?.trim();
+    if (!email) {
+      setEngineerVerifyError("Enter an email address to verify.");
+      setVerifiedEngineerEmail(null);
       return;
     }
     setEngineerVerifyError(null);
     try {
-      const result = await verify.mutateAsync({ type: "engineer", systemId });
+      const result = await verify.mutateAsync({ type: "engineer", email });
       if (!result.valid) {
-        setVerifiedEngineerId(null);
-        setEngineerVerifyError("No valid user with that id.");
+        setVerifiedEngineerEmail(null);
+        setEngineerVerifyError(explainVerificationFailure(result));
         return;
       }
-      setVerifiedEngineerId(systemId);
-      if (result.firstName) form.setValue("firstName", result.firstName);
-      if (result.lastName) form.setValue("lastName", result.lastName);
+      setVerifiedEngineerEmail(email);
       if (result.email) form.setValue("email", result.email);
+      applyFullName(result.fullName);
     } catch (error) {
-      setVerifiedEngineerId(null);
+      setVerifiedEngineerEmail(null);
       setEngineerVerifyError(formatEmployeeApiError(error, "Verification failed."));
     }
   }
 
   async function onSubmit(values: FormValues) {
     if (!canCreate) {
-      toast.error("Verify required system IDs before creating.");
+      toast.error("Verify the employee email before creating.");
       return;
     }
     try {
@@ -301,6 +288,48 @@ export function EmployeeDirectory() {
                         <FormControl>
                           <Input {...field} />
                         </FormControl>
+                        {requiresEmailVerification && (
+                          <div className="flex flex-wrap gap-2">
+                            {requiresCrmId && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                disabled={verify.isPending}
+                                onClick={() => void onVerifyCse()}
+                              >
+                                Verify CSE email
+                              </Button>
+                            )}
+                            {requiresEngineerId && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                disabled={verify.isPending}
+                                onClick={() => void onVerifyEngineer()}
+                              >
+                                Verify engineer email
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                        {verifiedCseEmail === emailValue?.trim() && (
+                          <p className="flex items-center gap-1 text-sm text-green-600">
+                            <CheckCircle2 className="h-4 w-4" />
+                            CSE email verified
+                          </p>
+                        )}
+                        {verifiedEngineerEmail === emailValue?.trim() && (
+                          <p className="flex items-center gap-1 text-sm text-green-600">
+                            <CheckCircle2 className="h-4 w-4" />
+                            Engineer email verified
+                          </p>
+                        )}
+                        {crmVerifyError && (
+                          <p className="text-sm text-destructive">{crmVerifyError}</p>
+                        )}
+                        {engineerVerifyError && (
+                          <p className="text-sm text-destructive">{engineerVerifyError}</p>
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}
@@ -383,37 +412,16 @@ export function EmployeeDirectory() {
                       name="crmSystemId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>CRM system ID</FormLabel>
+                            <FormLabel>CRM system ID (optional)</FormLabel>
                           <div className="flex gap-2">
                             <FormControl>
                               <Input
                                 placeholder="CSE-0001"
                                 {...field}
-                                onChange={(e) => {
-                                  field.onChange(e);
-                                  setVerifiedCrmId(null);
-                                  setCrmVerifyError(null);
-                                }}
+                                  onChange={field.onChange}
                               />
                             </FormControl>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              disabled={verify.isPending}
-                              onClick={() => void onVerifyCse()}
-                            >
-                              Verify
-                            </Button>
                           </div>
-                          {verifiedCrmId === crmSystemIdValue?.trim() && (
-                            <p className="flex items-center gap-1 text-sm text-green-600">
-                              <CheckCircle2 className="h-4 w-4" />
-                              Verified
-                            </p>
-                          )}
-                          {crmVerifyError && (
-                            <p className="text-sm text-destructive">{crmVerifyError}</p>
-                          )}
                           <FormMessage />
                         </FormItem>
                       )}
@@ -425,37 +433,16 @@ export function EmployeeDirectory() {
                       name="engineerSystemId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Engineer system ID</FormLabel>
+                            <FormLabel>Engineer system ID (optional)</FormLabel>
                           <div className="flex gap-2">
                             <FormControl>
                               <Input
                                 placeholder="ENG-0001"
                                 {...field}
-                                onChange={(e) => {
-                                  field.onChange(e);
-                                  setVerifiedEngineerId(null);
-                                  setEngineerVerifyError(null);
-                                }}
+                                  onChange={field.onChange}
                               />
                             </FormControl>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              disabled={verify.isPending}
-                              onClick={() => void onVerifyEngineer()}
-                            >
-                              Verify
-                            </Button>
                           </div>
-                          {verifiedEngineerId === engineerSystemIdValue?.trim() && (
-                            <p className="flex items-center gap-1 text-sm text-green-600">
-                              <CheckCircle2 className="h-4 w-4" />
-                              Verified
-                            </p>
-                          )}
-                          {engineerVerifyError && (
-                            <p className="text-sm text-destructive">{engineerVerifyError}</p>
-                          )}
                           <FormMessage />
                         </FormItem>
                       )}

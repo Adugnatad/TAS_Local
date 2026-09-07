@@ -13,6 +13,7 @@ import { useEmployees } from "@/features/employees/hooks";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -57,8 +58,8 @@ function toCreatePayload(
     tin: values.tin || undefined,
     phone: values.phone || undefined,
     address: values.address || undefined,
-    crmSystemId: values.crmSystemId || undefined,
     description: values.description || undefined,
+    alwaysUseSellingPriceForFCYConvertion: values.alwaysUseSellingPriceForFCYConvertion ?? false,
   };
   if (values.assignedCseUserId) {
     payload.assignedCseUserId = values.assignedCseUserId;
@@ -72,10 +73,10 @@ function toUpdatePayload(values: OrgFormValues): OrganizationWritePayload {
     tin: values.tin || undefined,
     phone: values.phone || undefined,
     address: values.address || undefined,
-    crmSystemId: values.crmSystemId || undefined,
     description: values.description || undefined,
     effectiveDate: values.effectiveDate || undefined,
     expiryDate: values.expiryDate || undefined,
+    alwaysUseSellingPriceForFCYConvertion: values.alwaysUseSellingPriceForFCYConvertion ?? false,
   };
 }
 
@@ -109,7 +110,6 @@ export function OrganizationForm({
       tin: organization?.tin ?? "",
       phone: organization?.phone ?? "",
       address: organization?.address ?? "",
-      crmSystemId: organization?.crmSystemId ?? "",
       description: organization?.description ?? "",
       effectiveDate: organization?.effectiveDate ?? "",
       expiryDate: organization?.expiryDate ?? "",
@@ -118,6 +118,8 @@ export function OrganizationForm({
       currency: organization?.accounts[0]?.currency ?? "ETB",
       accountType: organization?.accounts[0]?.accountType ?? "CURRENT",
       primary: organization?.accounts[0]?.primary ?? true,
+      alwaysUseSellingPriceForFCYConvertion:
+        organization?.alwaysUseSellingPriceForFCYConvertion ?? false,
     },
   });
 
@@ -255,19 +257,6 @@ export function OrganizationForm({
               />
               <FormField
                 control={form.control}
-                name="crmSystemId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>CRM system ID</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
                 name="description"
                 render={({ field }) => (
                   <FormItem>
@@ -332,7 +321,7 @@ export function OrganizationForm({
                                 [employee.firstName, employee.lastName]
                                   .filter(Boolean)
                                   .join(" ") || employee.username,
-                                employee.crmSystemId ? `(${employee.crmSystemId})` : null,
+                                employee.email,
                               ]
                                 .filter(Boolean)
                                 .join(" ");
@@ -344,6 +333,24 @@ export function OrganizationForm({
                             })}
                           </SelectContent>
                         </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="alwaysUseSellingPriceForFCYConvertion"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center gap-2 sm:col-span-2">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value ?? false}
+                            onChange={(event) => field.onChange(event.target.checked)}
+                          />
+                        </FormControl>
+                        <FormLabel className="font-normal">
+                          Always use selling price for FCY conversion
+                        </FormLabel>
                         <FormMessage />
                       </FormItem>
                     )}

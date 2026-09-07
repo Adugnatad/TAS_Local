@@ -1,6 +1,6 @@
 import { apiClient } from "@/lib/api-client";
 import type { ApiListParams, PageResponse } from "@/types/global";
-import type { CreateEmployeeInput, Employee, VerifyEmployeeIdResponse } from "./types";
+import type { CreateEmployeeInput, Employee, VerifyEmployeeResponse } from "./types";
 
 export async function fetchEmployees(params: ApiListParams): Promise<PageResponse<Employee>> {
   return apiClient("/employees", { params });
@@ -14,10 +14,10 @@ export async function assignUserRoles(userId: string, roleIds: string[]): Promis
   return apiClient(`/users/${userId}/roles`, { method: "PUT", body: { roleIds } });
 }
 
-export async function verifyCse(systemId: string): Promise<VerifyEmployeeIdResponse> {
-  return apiClient("/employees/verify-cse", { params: { systemId } });
+export async function verifyCse(email: string): Promise<VerifyEmployeeResponse> {
+  return apiClient("/employees/verify-cse", { params: { email } });
 }
 
-export async function verifyEngineer(systemId: string): Promise<VerifyEmployeeIdResponse> {
-  return apiClient("/employees/verify-engineer", { params: { systemId } });
+export async function verifyEngineer(email: string): Promise<VerifyEmployeeResponse> {
+  return apiClient("/employees/verify-engineer", { params: { email } });
 }

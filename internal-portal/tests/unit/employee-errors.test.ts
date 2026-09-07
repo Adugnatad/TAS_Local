@@ -12,10 +12,10 @@ describe("employee error mapping", () => {
     );
   });
 
-  it("maps engineer and validation codes", () => {
+  it("maps email, engineer metadata, and validation codes", () => {
     expect(
-      formatEmployeeApiError(new ApiError(400, "x", "ENGINEER_ID_REQUIRED"), "fail"),
-    ).toMatch(/engineer system id/i);
+      formatEmployeeApiError(new ApiError(400, "x", "EMAIL_REQUIRED"), "fail"),
+    ).toMatch(/email is required/i);
     expect(
       formatEmployeeApiError(new ApiError(409, "x", "ENGINEER_ID_EXISTS"), "fail"),
     ).toMatch(/already assigned/i);
@@ -25,8 +25,5 @@ describe("employee error mapping", () => {
     expect(
       formatEmployeeApiError(new ApiError(400, "x", "ENGINEER_NOT_VALIDATED"), "fail"),
     ).toMatch(/not validated/i);
-    expect(
-      formatEmployeeApiError(new ApiError(400, "x", "SYSTEM_ID_REQUIRED"), "fail"),
-    ).toMatch(/required for verification/i);
   });
 });

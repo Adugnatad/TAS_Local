@@ -23,12 +23,12 @@ export interface CreateEmployeeInput {
   roles: string[];
 }
 
-export interface VerifyEmployeeIdResponse {
+export interface VerifyEmployeeResponse {
   valid: boolean;
-  systemId?: string;
-  groups?: string[];
-  firstName?: string;
-  lastName?: string;
-  fullName?: string;
-  email?: string;
+  email: string;
+  groups: string[];
+  fullName: string | null;
+  coopStreamValid: boolean;
+  etradeChecked: boolean;
+  etradeValid: boolean;
 }

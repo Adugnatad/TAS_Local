@@ -36,11 +36,11 @@ export function useVerifyEmployeeId() {
   return useMutation({
     mutationFn: ({
       type,
-      systemId,
+      email,
     }: {
       type: "cse" | "engineer";
-      systemId: string;
+      email: string;
     }) =>
-      type === "cse" ? api.verifyCse(systemId) : api.verifyEngineer(systemId),
+      type === "cse" ? api.verifyCse(email) : api.verifyEngineer(email),
   });
 }
