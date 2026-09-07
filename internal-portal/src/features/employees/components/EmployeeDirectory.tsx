@@ -399,7 +399,9 @@ export function EmployeeDirectory() {
                             </label>
                           ))}
                           {!employeeRoles.length && (
-                            <p className="text-sm text-muted-foreground">No employee roles loaded.</p>
+                            <p className="text-sm text-muted-foreground">
+                              No employee roles loaded.
+                            </p>
                           )}
                         </div>
                         <FormMessage />
@@ -412,14 +414,10 @@ export function EmployeeDirectory() {
                       name="crmSystemId"
                       render={({ field }) => (
                         <FormItem>
-                            <FormLabel>CRM system ID (optional)</FormLabel>
+                          <FormLabel>CRM system ID (optional)</FormLabel>
                           <div className="flex gap-2">
                             <FormControl>
-                              <Input
-                                placeholder="CSE-0001"
-                                {...field}
-                                  onChange={field.onChange}
-                              />
+                              <Input placeholder="CSE-0001" {...field} onChange={field.onChange} />
                             </FormControl>
                           </div>
                           <FormMessage />
@@ -433,14 +431,10 @@ export function EmployeeDirectory() {
                       name="engineerSystemId"
                       render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Engineer system ID (optional)</FormLabel>
+                          <FormLabel>Engineer system ID (optional)</FormLabel>
                           <div className="flex gap-2">
                             <FormControl>
-                              <Input
-                                placeholder="ENG-0001"
-                                {...field}
-                                  onChange={field.onChange}
-                              />
+                              <Input placeholder="ENG-0001" {...field} onChange={field.onChange} />
                             </FormControl>
                           </div>
                           <FormMessage />

@@ -7,10 +7,7 @@ import {
   CalendarDays,
   CheckCircle2,
   ChevronRight,
-  FileText,
-  MapPin,
   Plus,
-  Ruler,
   Search,
   Trash2,
   X,
@@ -28,6 +25,11 @@ import type { EngineerTask as Task } from "../api";
 
 const fieldClass = "h-10 bg-background";
 const emptyTasks: Task[] = [];
+const APPOINTMENT_DATE_TASK_DEFINITION_KEY = "Activity_0wids8w";
+
+export function isAppointmentDateTask(taskDefinitionKey: string): boolean {
+  return taskDefinitionKey === APPOINTMENT_DATE_TASK_DEFINITION_KEY;
+}
 
 export function EngineerTasks() {
   const queryClient = useQueryClient();
@@ -35,8 +37,8 @@ export function EngineerTasks() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [query, setQuery] = useState("");
   const detailQuery = useQuery({
-    queryKey: ["engineer-task", selectedTask?.id],
-    queryFn: () => fetchEngineerTask(selectedTask!.id),
+    queryKey: ["engineer-task", selectedTask?.taskId],
+    queryFn: () => fetchEngineerTask(selectedTask!.taskId),
     enabled: Boolean(selectedTask),
   });
   const completeMutation = useMutation({
@@ -52,7 +54,9 @@ export function EngineerTasks() {
   const filteredTasks = useMemo(
     () =>
       tasks.filter((task) =>
-        `${task.name} ${task.id} ${task.location}`.toLowerCase().includes(query.toLowerCase()),
+        `${task.name} ${task.taskId} ${task.taskDefinitionKey}`
+          .toLowerCase()
+          .includes(query.toLowerCase()),
       ),
     [query, tasks],
   );
@@ -100,38 +104,24 @@ export function EngineerTasks() {
             <div className="space-y-3">
               {filteredTasks.map((task) => (
                 <button
-                  key={task.id}
+                  key={task.taskId}
                   type="button"
                   onClick={() => setSelectedTask(task)}
                   className="group flex w-full items-start gap-4 rounded-lg border bg-card p-5 text-left shadow-sm transition-colors hover:border-primary/50 hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                    {task.kind === "estimation" ? (
-                      <Ruler className="h-5 w-5" />
-                    ) : (
-                      <CalendarDays className="h-5 w-5" />
-                    )}
+                    <CalendarDays className="h-5 w-5" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="font-semibold">{task.name}</h3>
                       <Badge variant="outline" className="font-mono text-[10px]">
-                        {task.id}
+                        {task.taskId}
                       </Badge>
                     </div>
-                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                      {task.description}
-                    </p>
                     <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
-                      <span className="inline-flex items-center gap-1.5">
-                        <FileText className="h-3.5 w-3.5" />
-                        {task.collateralId}
-                      </span>
-                      <span className="inline-flex items-center gap-1.5">
-                        <MapPin className="h-3.5 w-3.5" />
-                        {task.location}
-                      </span>
-                      <span>{task.received}</span>
+                      <span>Created {formatTaskDate(task.created)}</span>
+                      <span>Definition {task.taskDefinitionKey || "-"}</span>
                     </div>
                   </div>
                   <ChevronRight className="mt-2 h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
@@ -156,7 +146,7 @@ export function EngineerTasks() {
         <TaskPanel
           task={detailQuery.data ?? selectedTask}
           onClose={() => setSelectedTask(null)}
-          onComplete={(body) => completeMutation.mutate({ taskId: selectedTask.id, body })}
+          onComplete={(body) => completeMutation.mutate({ taskId: selectedTask.taskId, body })}
           isSubmitting={completeMutation.isPending}
           error={completeMutation.error}
         />
@@ -178,8 +168,8 @@ function TaskPanel({
   isSubmitting: boolean;
   error: Error | null;
 }) {
-  const [buildings, setBuildings] = useState(["Main building"]);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const isAppointmentDate = isAppointmentDateTask(task.taskDefinitionKey);
 
   return (
     <div
@@ -203,7 +193,7 @@ function TaskPanel({
               {task.name}
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              {task.id} · {task.collateralType}
+              {task.taskId} · {task.taskDefinitionKey || "Workflow task"}
             </p>
           </div>
           <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close task">
@@ -220,23 +210,33 @@ function TaskPanel({
           >
             <Card className="bg-muted/40">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Collateral context</CardTitle>
+                <CardTitle className="text-sm">Task context</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-4 text-sm sm:grid-cols-2">
                 <div>
-                  <p className="text-xs text-muted-foreground">Collateral ID</p>
-                  <p className="mt-1 font-medium">{task.collateralId}</p>
+                  <p className="text-xs text-muted-foreground">Process instance</p>
+                  <p className="mt-1 break-all font-medium">{task.processInstanceId || "-"}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Location</p>
-                  <p className="mt-1 font-medium">{task.location}</p>
+                  <p className="text-xs text-muted-foreground">Assignee</p>
+                  <p className="mt-1 font-medium">{task.assignee || "-"}</p>
                 </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Created</p>
+                  <p className="mt-1 font-medium">{formatTaskDate(task.created)}</p>
+                </div>
+                {task.remark && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Remark</p>
+                    <p className="mt-1 font-medium">{task.remark}</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
-            {task.kind === "appointment" ? (
-              <AppointmentFields date={date} setDate={setDate} />
+            {isAppointmentDate ? (
+              <DateFields date={date} setDate={setDate} />
             ) : (
-              <EstimationFields buildings={buildings} setBuildings={setBuildings} />
+              <EstimationFields />
             )}
             <Separator />
             {error && <p className="text-sm text-destructive">{error.message}</p>}
@@ -245,11 +245,7 @@ function TaskPanel({
                 Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting
-                  ? "Submitting..."
-                  : task.kind === "appointment"
-                    ? "Set appointment"
-                    : "Submit valuation"}
+                {isSubmitting ? "Submitting..." : "Complete task"}
               </Button>
             </div>
           </form>
@@ -259,19 +255,20 @@ function TaskPanel({
   );
 }
 
-function AppointmentFields({ date, setDate }: { date: string; setDate: (value: string) => void }) {
+function DateFields({ date, setDate }: { date: string; setDate: (value: string) => void }) {
   return (
     <section className="space-y-4">
       <div>
-        <h3 className="font-semibold">Appointment details</h3>
+        <h3 className="font-semibold">Tentative estimation date</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          Choose the preferred date for the collateral inspection.
+          Choose the tentative date for the estimation workflow.
         </p>
       </div>
       <div className="max-w-xs space-y-2">
-        <Label htmlFor="appointment-date">Inspection date</Label>
+        <Label htmlFor="task-date">Estimation date</Label>
         <Input
-          id="appointment-date"
+          id="task-date"
+          name="date"
           type="date"
           min={new Date().toISOString().slice(0, 10)}
           value={date}
@@ -283,13 +280,15 @@ function AppointmentFields({ date, setDate }: { date: string; setDate: (value: s
   );
 }
 
-function EstimationFields({
-  buildings,
-  setBuildings,
-}: {
-  buildings: string[];
-  setBuildings: (value: string[]) => void;
-}) {
+function formatTaskDate(value: string): string {
+  if (!value) return "-";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+}
+
+function EstimationFields() {
+  const [buildings, setBuildings] = useState(["Main building"]);
+
   return (
     <div className="space-y-7">
       <section className="space-y-4">

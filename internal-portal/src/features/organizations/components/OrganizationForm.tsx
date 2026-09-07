@@ -16,13 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -47,10 +41,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-function toCreatePayload(
-  values: OrgFormValues,
-  customerId: string,
-): OrganizationWritePayload {
+function toCreatePayload(values: OrgFormValues, customerId: string): OrganizationWritePayload {
   const payload: OrganizationWritePayload = {
     name: values.name,
     accountNumber: values.accountNo,
@@ -99,8 +90,7 @@ export function OrganizationForm({
   const employees = useEmployees({ page: 0, size: 100 });
   const cseOptions =
     employees.data?.content.filter(
-      (employee) =>
-        employee.status === "ACTIVE" && employee.roles.includes("BankCSE"),
+      (employee) => employee.status === "ACTIVE" && employee.roles.includes("BankCSE"),
     ) ?? [];
 
   const form = useForm<OrgFormValues>({
@@ -318,9 +308,8 @@ export function OrganizationForm({
                           <SelectContent>
                             {cseOptions.map((employee) => {
                               const label = [
-                                [employee.firstName, employee.lastName]
-                                  .filter(Boolean)
-                                  .join(" ") || employee.username,
+                                [employee.firstName, employee.lastName].filter(Boolean).join(" ") ||
+                                  employee.username,
                                 employee.email,
                               ]
                                 .filter(Boolean)
@@ -383,9 +372,7 @@ export function OrganizationForm({
                             Look up
                           </Button>
                         </div>
-                        {lookupError && (
-                          <p className="text-sm text-destructive">{lookupError}</p>
-                        )}
+                        {lookupError && <p className="text-sm text-destructive">{lookupError}</p>}
                         <FormMessage />
                       </FormItem>
                     )}

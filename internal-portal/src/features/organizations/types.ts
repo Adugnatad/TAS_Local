@@ -138,9 +138,7 @@ export interface CreateOrgUserInput {
   permissionType: PermissionType;
 }
 
-export type UpdateOrgUserInput = Partial<
-  Omit<CreateOrgUserInput, "username" | "password">
->;
+export type UpdateOrgUserInput = Partial<Omit<CreateOrgUserInput, "username" | "password">>;
 
 export type OrgAccountInput = {
   accountNo: string;

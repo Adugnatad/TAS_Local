@@ -1,14 +1,13 @@
 import { apiClient } from "@/lib/api-client";
 
 export type EngineerTask = Record<string, unknown> & {
-  id: string;
-  kind: "estimation" | "appointment";
+  taskId: string;
+  processInstanceId: string;
+  taskDefinitionKey: string;
+  created: string;
   name: string;
-  description: string;
-  collateralId: string;
-  collateralType: string;
-  location: string;
-  received: string;
+  assignee: string;
+  remark: string;
 };
 
 function text(task: Record<string, unknown>, ...keys: string[]): string {
@@ -46,22 +45,16 @@ export function completeEngineerTask(taskId: string, body: FormData): Promise<un
   });
 }
 
-function normalizeTask(task: Record<string, unknown>): EngineerTask {
+export function normalizeTask(task: Record<string, unknown>): EngineerTask {
   const name = text(task, "name", "title", "taskName") || "Assigned task";
-  const kind = text(task, "kind", "taskType", "type").toLowerCase().includes("appoint")
-    ? "appointment"
-    : name.toLowerCase().includes("appoint")
-      ? "appointment"
-      : "estimation";
   return {
     ...task,
-    id: text(task, "id", "taskId", "key"),
+    taskId: text(task, "taskId", "id", "key"),
+    processInstanceId: text(task, "processInstanceId"),
+    taskDefinitionKey: text(task, "taskDefinitionKey"),
+    created: text(task, "created", "createdAt"),
     name,
-    kind,
-    description: text(task, "description", "taskDescription"),
-    collateralId: text(task, "collateralId", "collateral_id"),
-    collateralType: text(task, "collateralType", "collateral_type"),
-    location: text(task, "location", "propertyLocation"),
-    received: text(task, "received", "createdAt", "created", "assignedAt"),
+    assignee: text(task, "assignee"),
+    remark: text(task, "remark"),
   };
 }

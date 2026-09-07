@@ -38,9 +38,9 @@ describe("login schema shape", () => {
   });
 
   it("accepts username and password", () => {
-    expect(
-      loginSchema.safeParse({ username: "admin", password: "ChangeMe123!" }).success,
-    ).toBe(true);
+    expect(loginSchema.safeParse({ username: "admin", password: "ChangeMe123!" }).success).toBe(
+      true,
+    );
   });
 });
 

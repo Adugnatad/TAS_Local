@@ -20,10 +20,7 @@ export function tinVerificationLabel(
 }
 
 export function canAddOrgUsers(
-  org:
-    | Pick<OrganizationDetail, "assignedCseUserId" | "tinValidationStatus">
-    | null
-    | undefined,
+  org: Pick<OrganizationDetail, "assignedCseUserId" | "tinValidationStatus"> | null | undefined,
 ): { ok: boolean; reason?: string } {
   if (!org) return { ok: false, reason: "Organization is still loading." };
   if (!org.assignedCseUserId) {

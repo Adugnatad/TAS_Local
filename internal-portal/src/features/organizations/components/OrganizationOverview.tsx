@@ -23,12 +23,7 @@ import { cn } from "@/lib/utils";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -84,8 +79,7 @@ export function OrganizationOverview({ orgId }: { orgId: string }) {
 
   const cseOptions =
     employees.data?.content.filter(
-      (employee) =>
-        employee.status === "ACTIVE" && employee.roles.includes("BankCSE"),
+      (employee) => employee.status === "ACTIVE" && employee.roles.includes("BankCSE"),
     ) ?? [];
 
   async function run(action: () => Promise<unknown>, ok: string) {
@@ -156,8 +150,8 @@ export function OrganizationOverview({ orgId }: { orgId: string }) {
         <Alert>
           <AlertTitle>CSE not assigned</AlertTitle>
           <AlertDescription>
-            A CSE must be assigned before adding users. Organization users and signatory setup
-            stay blocked until then.
+            A CSE must be assigned before adding users. Organization users and signatory setup stay
+            blocked until then.
           </AlertDescription>
         </Alert>
       )}
@@ -248,8 +242,7 @@ export function OrganizationOverview({ orgId }: { orgId: string }) {
               Entered name: <span className="font-medium">{org.tinEnteredName ?? "—"}</span>
             </p>
             <p>
-              Registered name:{" "}
-              <span className="font-medium">{org.tinRegisteredName ?? "—"}</span>
+              Registered name: <span className="font-medium">{org.tinRegisteredName ?? "—"}</span>
             </p>
             <p>
               Name match:{" "}

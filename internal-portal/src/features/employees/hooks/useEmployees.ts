@@ -34,13 +34,7 @@ export function useAssignUserRoles() {
 
 export function useVerifyEmployeeId() {
   return useMutation({
-    mutationFn: ({
-      type,
-      email,
-    }: {
-      type: "cse" | "engineer";
-      email: string;
-    }) =>
+    mutationFn: ({ type, email }: { type: "cse" | "engineer"; email: string }) =>
       type === "cse" ? api.verifyCse(email) : api.verifyEngineer(email),
   });
 }
