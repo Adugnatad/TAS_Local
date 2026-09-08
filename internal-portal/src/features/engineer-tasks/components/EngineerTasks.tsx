@@ -141,8 +141,6 @@ export function buildEstimationCompletionBody(formData: FormData): FormData {
   request.buildings = buildings;
   const body = new FormData();
 
-  console.log("Request body:", request);
-
   body.append("request", JSON.stringify(request));
   return body;
 }
@@ -262,10 +260,7 @@ export function EngineerTasks() {
         <TaskPanel
           task={detailQuery.data ?? selectedTask}
           onClose={() => setSelectedTask(null)}
-          // onComplete={(body) => completeMutation.mutate({ taskId: selectedTask.taskId, body })}
-          onComplete={(body) => {
-            console.log(body);
-          }}
+          onComplete={(body) => completeMutation.mutate({ taskId: selectedTask.taskId, body })}
           isSubmitting={completeMutation.isPending}
           error={completeMutation.error}
         />
