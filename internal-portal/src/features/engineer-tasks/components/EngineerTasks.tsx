@@ -140,6 +140,9 @@ export function buildEstimationCompletionBody(formData: FormData): FormData {
   );
   request.buildings = buildings;
   const body = new FormData();
+
+  console.log("Request body:", request);
+
   body.append("request", JSON.stringify(request));
   return body;
 }
