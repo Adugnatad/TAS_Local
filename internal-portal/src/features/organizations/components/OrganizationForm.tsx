@@ -394,39 +394,6 @@ export function OrganizationForm({
                       </FormItem>
                     )}
                   />
-                  <fieldset className="space-y-2 sm:col-span-2">
-                    <legend className="text-sm font-medium">FCY conversion price basis</legend>
-                    <div className="flex flex-col gap-2 sm:flex-row sm:gap-6">
-                      <label className="flex items-center gap-2 text-sm">
-                        <input
-                          type="radio"
-                          name="fcy-price-basis"
-                          value="selling"
-                          checked={form.watch("alwaysUseSellingPriceForFCYConvertion") === true}
-                          onChange={() => {
-                            form.setValue("alwaysUseSellingPriceForFCYConvertion", true);
-                            form.setValue("alwaysUseBuyingPriceForFCYConversion", false);
-                          }}
-                          className="size-4 accent-primary"
-                        />
-                        Always use selling price
-                      </label>
-                      <label className="flex items-center gap-2 text-sm">
-                        <input
-                          type="radio"
-                          name="fcy-price-basis"
-                          value="buying"
-                          checked={form.watch("alwaysUseBuyingPriceForFCYConversion") === true}
-                          onChange={() => {
-                            form.setValue("alwaysUseSellingPriceForFCYConvertion", false);
-                            form.setValue("alwaysUseBuyingPriceForFCYConversion", true);
-                          }}
-                          className="size-4 accent-primary"
-                        />
-                        Always use buying price
-                      </label>
-                    </div>
-                  </fieldset>
                   <FormField
                     control={form.control}
                     name="accountNo"
