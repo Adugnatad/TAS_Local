@@ -43,6 +43,7 @@ export const PERMISSION_LABELS: Record<string, string> = {
   MANAGE_SIGNATORY_ANY: "Configure any signatory matrix",
   MANAGE_SIGNATORY_OWN: "Configure own signatory matrix",
   MANAGE_OWN_ORG: "Manage own organization",
+  ACKNOWLEDGE_RTGS: "Acknowledge RTGS transfers",
 };
 
 export const ORG_STATUSES = ["ACTIVE", "SUSPENDED", "TERMINATED"] as const;
@@ -74,11 +75,18 @@ export const NAV_ITEMS: Array<{
   href: string;
   label: string;
   permissions: readonly string[];
+  allPermissions?: readonly string[];
 }> = [
   {
     href: "/organizations",
     label: "Contracts",
     permissions: ["VIEW_ORGANIZATIONS", "MANAGE_ORGANIZATIONS"],
+  },
+  {
+    href: "/rtgs-transfers",
+    label: "RTGS Finance",
+    permissions: ["ACKNOWLEDGE_RTGS"],
+    allPermissions: ["VIEW_ORGANIZATIONS"],
   },
   { href: "/status", label: "Status", permissions: [] },
   { href: "/employees", label: "Employees", permissions: ["MANAGE_EMPLOYEES"] },

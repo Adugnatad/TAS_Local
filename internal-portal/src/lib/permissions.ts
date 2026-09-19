@@ -7,6 +7,7 @@ export const PERMISSIONS = [
   "MANAGE_SIGNATORY_ANY",
   "MANAGE_SIGNATORY_OWN",
   "MANAGE_OWN_ORG",
+  "ACKNOWLEDGE_RTGS",
 ] as const;
 
 export type PermissionCode = (typeof PERMISSIONS)[number];

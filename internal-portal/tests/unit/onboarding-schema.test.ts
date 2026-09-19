@@ -12,6 +12,7 @@ describe("orgFormSchema", () => {
   it("accepts a valid organization payload", () => {
     const result = orgFormSchema.safeParse({
       name: "Acme Trading PLC",
+      formOfBusiness: "Partnerships/plc",
       tin: "1234567890",
     });
     expect(result.success).toBe(true);
@@ -21,7 +22,18 @@ describe("orgFormSchema", () => {
     expect(
       orgFormSchema.safeParse({
         name: "Acme Trading PLC",
+        formOfBusiness: "Partnerships/plc",
         alwaysUseSellingPriceForFCYConvertion: true,
+      }).success,
+    ).toBe(true);
+  });
+
+  it("accepts the FCY buying-price preference", () => {
+    expect(
+      orgFormSchema.safeParse({
+        name: "Acme Trading PLC",
+        formOfBusiness: "Partnerships/plc",
+        alwaysUseBuyingPriceForFCYConversion: true,
       }).success,
     ).toBe(true);
   });

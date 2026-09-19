@@ -174,6 +174,7 @@ export function OrganizationListView() {
               <TableHeader>
                 <TableRow className="bg-sky-50/80 hover:bg-sky-50/80">
                   <TableHead>Contract Name</TableHead>
+                  <TableHead>Form of business</TableHead>
                   <TableHead>Customer ID</TableHead>
                   <TableHead>TIN</TableHead>
                   <TableHead>Verification</TableHead>
@@ -190,54 +191,57 @@ export function OrganizationListView() {
                 {rows.map((org) => {
                   const tin = tinVerificationLabel(org);
                   return (
-                  <TableRow key={org.id}>
-                    <TableCell>
-                      <Link
-                        href={`/organizations/${org.id}`}
-                        className="font-medium text-foreground hover:underline"
-                      >
-                        {org.name}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="tabular-nums">{customerId(org)}</TableCell>
-                    <TableCell className="tabular-nums">{org.tin ?? "—"}</TableCell>
-                    <TableCell>
-                      <StatusBadge status={tin.status} label={tin.label} />
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge status={org.status} />
-                    </TableCell>
-                    <TableCell>{formatDate(org.effectiveDate)}</TableCell>
-                    <TableCell>{formatDate(org.expiryDate)}</TableCell>
-                    <TableCell>{org.activeUsers ?? "—"}</TableCell>
-                    <TableCell>{org.accounts}</TableCell>
-                    <TableCell>{formatDate(org.createdAt)}</TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          render={
-                            <Button variant="ghost" size="icon-sm" aria-label="Row actions" />
-                          }
+                    <TableRow key={org.id}>
+                      <TableCell>
+                        <Link
+                          href={`/organizations/${org.id}`}
+                          className="font-medium text-foreground hover:underline"
                         >
-                          <MoreVertical className="size-4" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            render={<Link href={`/organizations/${org.id}`} />}
+                          {org.name}
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        {org.formOfBusiness ?? (
+                          <span className="font-medium text-amber-700">Missing</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="tabular-nums">{customerId(org)}</TableCell>
+                      <TableCell className="tabular-nums">{org.tin ?? "—"}</TableCell>
+                      <TableCell>
+                        <StatusBadge status={tin.status} label={tin.label} />
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge status={org.status} />
+                      </TableCell>
+                      <TableCell>{formatDate(org.effectiveDate)}</TableCell>
+                      <TableCell>{formatDate(org.expiryDate)}</TableCell>
+                      <TableCell>{org.activeUsers ?? "—"}</TableCell>
+                      <TableCell>{org.accounts}</TableCell>
+                      <TableCell>{formatDate(org.createdAt)}</TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            render={
+                              <Button variant="ghost" size="icon-sm" aria-label="Row actions" />
+                            }
                           >
-                            Open
-                          </DropdownMenuItem>
-                          {can("MANAGE_ORGANIZATIONS") && (
-                            <DropdownMenuItem
-                              render={<Link href={`/organizations/${org.id}/edit`} />}
-                            >
-                              Edit
+                            <MoreVertical className="size-4" />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem render={<Link href={`/organizations/${org.id}`} />}>
+                              Open
                             </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
+                            {can("MANAGE_ORGANIZATIONS") && (
+                              <DropdownMenuItem
+                                render={<Link href={`/organizations/${org.id}/edit`} />}
+                              >
+                                Edit
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
               </TableBody>

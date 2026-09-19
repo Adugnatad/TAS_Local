@@ -2,6 +2,19 @@ import { z } from "zod";
 
 export const orgFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
+  formOfBusiness: z
+    .string()
+    .refine(
+      (value) =>
+        value === "" ||
+        [
+          "Cooperatives",
+          "Individual/Sole",
+          "Partnerships/plc",
+          "Cooperations/Share companies",
+        ].includes(value),
+      "Select a valid form of business",
+    ),
   tin: z.string().optional(),
   phone: z.string().optional(),
   address: z.string().optional(),
@@ -10,6 +23,7 @@ export const orgFormSchema = z.object({
   expiryDate: z.string().optional(),
   assignedCseUserId: z.string().optional(),
   alwaysUseSellingPriceForFCYConvertion: z.boolean().optional(),
+  alwaysUseBuyingPriceForFCYConversion: z.boolean().optional(),
   accountNo: z.string().optional(),
   currency: z.string().optional(),
   accountType: z.string().optional(),

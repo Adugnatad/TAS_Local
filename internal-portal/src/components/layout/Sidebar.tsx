@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, LogOut, Menu, Shield, UserRound, Users } from "lucide-react";
+import { Building2, Landmark, LogOut, Menu, Shield, UserRound, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/constants";
 import { useSession } from "@/features/auth/hooks/useSession";
@@ -15,6 +15,7 @@ import { NotificationBell } from "@/features/notifications/components/Notificati
 
 const iconMap: Record<string, typeof Building2> = {
   "/organizations": Building2,
+  "/rtgs-transfers": Landmark,
   "/employees": Users,
   "/roles": Shield,
   "/profile": UserRound,
@@ -39,6 +40,8 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
       {NAV_ITEMS.filter(
         (item) =>
           (item.permissions.length === 0 || canAny(...item.permissions)) &&
+          (item.allPermissions?.every((permission) => user?.permissions.includes(permission)) ??
+            true) &&
           (item.href !== "/engineer-tasks" || isBankEngineer),
       ).map((item) => {
         const Icon = iconMap[item.href] ?? Building2;

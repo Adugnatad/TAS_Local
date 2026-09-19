@@ -8,15 +8,26 @@ import { Button } from "@/components/ui/button";
 
 interface PermissionGuardProps {
   anyOf?: readonly string[];
+  allOf?: readonly string[];
   children: React.ReactNode;
   fallback?: React.ReactNode;
   redirectTo?: string;
 }
 
-export function PermissionGuard({ anyOf, children, fallback, redirectTo }: PermissionGuardProps) {
+export function PermissionGuard({
+  anyOf,
+  allOf,
+  children,
+  fallback,
+  redirectTo,
+}: PermissionGuardProps) {
   const { user, isAuthenticated, canAny } = useSession();
   const router = useRouter();
-  const isAllowed = !anyOf || anyOf.length === 0 || canAny(...anyOf);
+  const isAllowed =
+    (!anyOf || anyOf.length === 0 || canAny(...anyOf)) &&
+    (!allOf ||
+      allOf.length === 0 ||
+      allOf.every((permission) => user?.permissions.includes(permission)));
 
   useEffect(() => {
     if (!isAuthenticated && redirectTo) {

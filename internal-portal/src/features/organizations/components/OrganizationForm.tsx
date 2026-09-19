@@ -13,7 +13,6 @@ import { useEmployees } from "@/features/employees/hooks";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,6 +43,7 @@ import {
 function toCreatePayload(values: OrgFormValues, customerId: string): OrganizationWritePayload {
   const payload: OrganizationWritePayload = {
     name: values.name,
+    formOfBusiness: values.formOfBusiness || undefined,
     accountNumber: values.accountNo,
     customerId,
     tin: values.tin || undefined,
@@ -51,6 +51,7 @@ function toCreatePayload(values: OrgFormValues, customerId: string): Organizatio
     address: values.address || undefined,
     description: values.description || undefined,
     alwaysUseSellingPriceForFCYConvertion: values.alwaysUseSellingPriceForFCYConvertion ?? false,
+    alwaysUseBuyingPriceForFCYConversion: values.alwaysUseBuyingPriceForFCYConversion ?? false,
   };
   if (values.assignedCseUserId) {
     payload.assignedCseUserId = values.assignedCseUserId;
@@ -61,6 +62,7 @@ function toCreatePayload(values: OrgFormValues, customerId: string): Organizatio
 function toUpdatePayload(values: OrgFormValues): OrganizationWritePayload {
   return {
     name: values.name,
+    formOfBusiness: values.formOfBusiness || undefined,
     tin: values.tin || undefined,
     phone: values.phone || undefined,
     address: values.address || undefined,
@@ -68,6 +70,7 @@ function toUpdatePayload(values: OrgFormValues): OrganizationWritePayload {
     effectiveDate: values.effectiveDate || undefined,
     expiryDate: values.expiryDate || undefined,
     alwaysUseSellingPriceForFCYConvertion: values.alwaysUseSellingPriceForFCYConvertion ?? false,
+    alwaysUseBuyingPriceForFCYConversion: values.alwaysUseBuyingPriceForFCYConversion ?? false,
   };
 }
 
@@ -97,6 +100,7 @@ export function OrganizationForm({
     resolver: zodResolver(orgFormSchema),
     defaultValues: {
       name: organization?.name ?? "",
+      formOfBusiness: organization?.formOfBusiness ?? "",
       tin: organization?.tin ?? "",
       phone: organization?.phone ?? "",
       address: organization?.address ?? "",
@@ -110,6 +114,8 @@ export function OrganizationForm({
       primary: organization?.accounts[0]?.primary ?? true,
       alwaysUseSellingPriceForFCYConvertion:
         organization?.alwaysUseSellingPriceForFCYConvertion ?? false,
+      alwaysUseBuyingPriceForFCYConversion:
+        organization?.alwaysUseBuyingPriceForFCYConversion ?? false,
     },
   });
 
@@ -152,6 +158,10 @@ export function OrganizationForm({
         if (result.warnings?.length) toast.message(result.warnings.join(" · "));
         router.push(`/organizations/${organization.id}`);
       } else {
+        if (!values.formOfBusiness) {
+          toast.error("Form of business is required.");
+          return;
+        }
         if (!customerId) {
           toast.error("Look up and confirm the account before creating.");
           return;
@@ -202,6 +212,31 @@ export function OrganizationForm({
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="formOfBusiness"
+                render={({ field }) => (
+                  <FormItem className="sm:col-span-2">
+                    <FormLabel>Form of business</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a form of business" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Cooperatives">Cooperatives</SelectItem>
+                        <SelectItem value="Individual/Sole">Individual/Sole</SelectItem>
+                        <SelectItem value="Partnerships/plc">Partnerships/plc</SelectItem>
+                        <SelectItem value="Cooperations/Share companies">
+                          Cooperations/Share companies
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -326,24 +361,39 @@ export function OrganizationForm({
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="alwaysUseSellingPriceForFCYConvertion"
-                    render={({ field }) => (
-                      <FormItem className="flex items-center gap-2 sm:col-span-2">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value ?? false}
-                            onChange={(event) => field.onChange(event.target.checked)}
-                          />
-                        </FormControl>
-                        <FormLabel className="font-normal">
-                          Always use selling price for FCY conversion
-                        </FormLabel>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <fieldset className="space-y-2 sm:col-span-2">
+                    <legend className="text-sm font-medium">FCY conversion price basis</legend>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:gap-6">
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="radio"
+                          name="fcy-price-basis"
+                          value="selling"
+                          checked={form.watch("alwaysUseSellingPriceForFCYConvertion") === true}
+                          onChange={() => {
+                            form.setValue("alwaysUseSellingPriceForFCYConvertion", true);
+                            form.setValue("alwaysUseBuyingPriceForFCYConversion", false);
+                          }}
+                          className="size-4 accent-primary"
+                        />
+                        Always use selling price
+                      </label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="radio"
+                          name="fcy-price-basis"
+                          value="buying"
+                          checked={form.watch("alwaysUseBuyingPriceForFCYConversion") === true}
+                          onChange={() => {
+                            form.setValue("alwaysUseSellingPriceForFCYConvertion", false);
+                            form.setValue("alwaysUseBuyingPriceForFCYConversion", true);
+                          }}
+                          className="size-4 accent-primary"
+                        />
+                        Always use buying price
+                      </label>
+                    </div>
+                  </fieldset>
                   <FormField
                     control={form.control}
                     name="accountNo"

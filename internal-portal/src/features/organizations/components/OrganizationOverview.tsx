@@ -114,8 +114,10 @@ export function OrganizationOverview({ orgId }: { orgId: string }) {
   const hasCse = Boolean(org.assignedCseUserId);
   const addUsersGate = canAddOrgUsers(org);
   const tin = tinVerificationLabel(org);
+  const missingFormOfBusiness = !org.formOfBusiness;
   const infoRows: Array<{ label: string; value: React.ReactNode }> = [
     { label: "Customer ID", value: org.cbsCustomerId || org.crmSystemId || org.tin || "—" },
+    { label: "Form of business", value: org.formOfBusiness ?? "Missing" },
     { label: "TIN", value: org.tin ?? "—" },
     { label: "Phone", value: org.phone ?? "—" },
     { label: "Address", value: org.address ?? "—" },
@@ -143,6 +145,17 @@ export function OrganizationOverview({ orgId }: { orgId: string }) {
         <Alert>
           <AlertTitle>Validation warnings</AlertTitle>
           <AlertDescription>{org.warnings.join(" · ")}</AlertDescription>
+        </Alert>
+      )}
+
+      {missingFormOfBusiness && (
+        <Alert>
+          <AlertTitle>Form of business is missing</AlertTitle>
+          <AlertDescription>
+            This organization cannot raise a loan request until a form of business is set on its
+            profile.
+            {canManage ? " Use Edit organization to fix it." : " Contact a bank administrator."}
+          </AlertDescription>
         </Alert>
       )}
 

@@ -25,6 +25,7 @@ export interface DocumentTypeOption {
 export interface OrganizationSummary {
   id: string;
   name: string;
+  formOfBusiness?: string | null;
   tin: string | null;
   status: OrgStatus;
   tinValidationStatus: ValidationStatus;
@@ -47,6 +48,7 @@ export interface OrganizationSummary {
 export interface OrganizationDetail {
   id: string;
   name: string;
+  formOfBusiness: string | null;
   tin: string | null;
   tinValidationStatus: ValidationStatus;
   tinValidationReason: string | null;
@@ -66,6 +68,7 @@ export interface OrganizationDetail {
   expiryDate: string | null;
   description: string | null;
   alwaysUseSellingPriceForFCYConvertion?: boolean;
+  alwaysUseBuyingPriceForFCYConversion?: boolean;
   createdBy: string | null;
   activeUsers: number;
   accounts: OrgAccount[];
@@ -75,6 +78,7 @@ export interface OrganizationDetail {
 
 export interface OrganizationWritePayload {
   name: string;
+  formOfBusiness?: string;
   tin?: string;
   phone?: string;
   address?: string;
@@ -84,6 +88,7 @@ export interface OrganizationWritePayload {
   expiryDate?: string;
   assignedCseUserId?: string;
   alwaysUseSellingPriceForFCYConvertion?: boolean;
+  alwaysUseBuyingPriceForFCYConversion?: boolean;
   accountNumber?: string;
   customerId?: string;
   accounts?: Array<{
