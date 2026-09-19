@@ -53,6 +53,19 @@ export function RtgsAcknowledgementView() {
     setNote("");
   }
 
+  async function acknowledgeFromQueue(id: string) {
+    try {
+      const result = await acknowledge.mutateAsync({ id });
+      toast.success(
+        result.status === "TRIGGER_FAILED"
+          ? "Acknowledgement recorded; IPS trigger failed. Retry is available."
+          : "Transfer acknowledged and sent to IPS.",
+      );
+    } catch (error) {
+      toast.error(errorMessage(error));
+    }
+  }
+
   async function submitAcknowledgement() {
     if (!transfer) return;
     try {
@@ -98,6 +111,7 @@ export function RtgsAcknowledgementView() {
                   <TableHead>Destination bank</TableHead>
                   <TableHead>Amount</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="w-32">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -113,6 +127,19 @@ export function RtgsAcknowledgementView() {
                     <TableCell>{item.destinationBankName}</TableCell>
                     <TableCell className="tabular-nums">{formatAmount(item)}</TableCell>
                     <TableCell>{item.status}</TableCell>
+                    <TableCell>
+                      <Button
+                        size="sm"
+                        className="bg-emerald-600 text-white hover:bg-emerald-700"
+                        disabled={acknowledge.isPending}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void acknowledgeFromQueue(item.id);
+                        }}
+                      >
+                        Acknowledge
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
