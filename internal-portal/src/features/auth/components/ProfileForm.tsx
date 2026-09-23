@@ -62,13 +62,10 @@ export function ProfileForm() {
   const name = displayName(user);
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Profile"
-        description="Your employee account details and password."
-      />
+    <div className="mx-auto w-full max-w-3xl space-y-6 px-1 md:px-2">
+      <PageHeader title="Profile" description="Your employee account details and password." />
 
-      <div className="max-w-2xl space-y-6">
+      <div className="w-full space-y-6">
         <Card className="gap-0 py-0 shadow-sm">
           <CardHeader className="border-b bg-sky-50/60 py-5">
             <div className="flex flex-wrap items-center gap-4">

@@ -18,13 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -52,9 +46,7 @@ export function RolesAdmin() {
   const { can } = useSession();
   const canManage = can("MANAGE_ROLES");
   const canViewCatalog = can("MANAGE_ROLES") || can("MANAGE_PERMISSIONS");
-  const [scopeFilter, setScopeFilter] = useState<"EMPLOYEE" | "ORGANIZATION" | "ALL">(
-    "EMPLOYEE",
-  );
+  const [scopeFilter, setScopeFilter] = useState<"EMPLOYEE" | "ORGANIZATION" | "ALL">("EMPLOYEE");
   const [q, setQ] = useState("");
   const query = useRoles({
     scope: scopeFilter === "ALL" ? undefined : scopeFilter,
@@ -384,7 +376,7 @@ export function RolesAdmin() {
       </Dialog>
 
       {canViewCatalog && (
-        <section className="space-y-3">
+        <section className="space-y-4">
           <div>
             <h2 className="flex items-center gap-2 text-sm font-semibold tracking-wide text-sky-800">
               <span className="h-4 w-1 rounded-full bg-primary" aria-hidden />
@@ -401,7 +393,7 @@ export function RolesAdmin() {
           ) : !permissions.data?.length ? (
             <EmptyState title="No permissions" />
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {permissions.data.map((item) => (
                 <Card key={item.id} className="shadow-sm">
                   <CardHeader className="pb-2">

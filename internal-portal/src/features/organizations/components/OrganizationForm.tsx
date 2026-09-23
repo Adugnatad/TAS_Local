@@ -180,7 +180,7 @@ export function OrganizationForm({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-full max-w-5xl space-y-6 px-1 md:px-2">
       {!embedded && (
         <PageHeader
           title={isEdit ? "Edit organization" : "Register organization"}
@@ -194,7 +194,7 @@ export function OrganizationForm({
           </h2>
         </div>
       )}
-      <Card className={cn(embedded ? "border-0 shadow-none" : "max-w-3xl")}>
+      <Card className={cn(embedded ? "border-0 shadow-none" : "w-full max-w-3xl mx-auto")}>
         {!embedded && (
           <CardHeader>
             <CardTitle>Company details</CardTitle>
