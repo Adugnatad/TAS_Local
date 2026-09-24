@@ -100,12 +100,12 @@ function RolePermissionFields({ control }: { control: Control<RolePermissionValu
 
 export function OrganizationUsersPanel({ orgId }: { orgId: string }) {
   const { can } = useSession();
-  const canManage = can("MANAGE_ORGANIZATIONS");
   const [page, setPage] = useState(0);
   const [editing, setEditing] = useState<OrganizationUser | null>(null);
   const [resetUser, setResetUser] = useState<OrganizationUser | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const org = useOrganization(orgId);
+  const canManage = can("MANAGE_ORGANIZATIONS") && org.data?.status !== "TERMINATED";
   const query = useOrgUsers(orgId, { page, size: 20 });
   const mutations = useOrgUserMutations(orgId);
   const addUsersGate = canAddOrgUsers(org.data);

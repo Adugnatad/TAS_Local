@@ -34,10 +34,6 @@ export function useOrgAccountMutations(orgId: string) {
       mutationFn: (accountId: string) => api.setPrimaryOrgAccount(orgId, accountId),
       onSuccess: invalidate,
     }),
-    remove: useMutation({
-      mutationFn: (accountId: string) => api.deleteOrgAccount(orgId, accountId),
-      onSuccess: invalidate,
-    }),
     link: useMutation({
       mutationFn: (accountNumbers: string[]) => api.linkOrgAccounts(orgId, accountNumbers),
       onSuccess: invalidate,

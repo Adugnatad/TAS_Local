@@ -279,6 +279,14 @@ export function OrganizationForm({
                       <p className="text-sm text-muted-foreground">
                         Accounts we found for this customer — tick which ones this company will use:
                       </p>
+                      {lookupResult.listingComplete === false && (
+                        <Alert>
+                          <AlertDescription>
+                            We could not list all accounts for this customer. The list below may be
+                            incomplete.
+                          </AlertDescription>
+                        </Alert>
+                      )}
                       <AccountSelectionTable
                         accounts={lookupResult.accounts}
                         selectedAccountNos={selectedAccountNos}

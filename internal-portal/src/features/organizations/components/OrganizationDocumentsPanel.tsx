@@ -3,16 +3,19 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { downloadOrgDocument } from "../api";
-import { useDocumentTypes, useOrgDocuments, useUploadOrgDocument } from "../hooks";
+import { useDocumentTypes, useOrgDocuments, useOrganization, useUploadOrgDocument } from "../hooks";
 import { formatOrgApiError } from "../tin";
+import type { OrgDocument } from "../types";
 import { useSession } from "@/features/auth/hooks/useSession";
 import { DOCUMENT_TYPES } from "@/lib/constants";
+import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -21,16 +24,35 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+function documentSourceLabel(source?: string | null) {
+  if (!source) return "—";
+  if (source === "COOP_INTERNAL") return "Internal";
+  if (source === "COOP_CUSTOMER") return "Customer";
+  return source;
+}
+
+function versionKey(doc: OrgDocument) {
+  return `${doc.docType || doc.type || "Other"}::${doc.documentName || ""}`;
+}
+
+function isImageUrl(url: string, fileName?: string) {
+  const name = fileName || url;
+  return /\.(png|jpe?g|webp|gif)$/i.test(name);
+}
+
 export function OrganizationDocumentsPanel({ orgId }: { orgId: string }) {
   const { can } = useSession();
-  const canManage = can("MANAGE_ORGANIZATIONS");
-  const query = useOrgDocuments(orgId);
+  const org = useOrganization(orgId);
+  const canManage = can("MANAGE_ORGANIZATIONS") && org.data?.status !== "TERMINATED";
+  const [includeHistory, setIncludeHistory] = useState(false);
+  const query = useOrgDocuments(orgId, { includeHistory });
   const documentTypes = useDocumentTypes();
   const mutations = useUploadOrgDocument(orgId);
   const [file, setFile] = useState<File | null>(null);
   const [type, setType] = useState("BUSINESS_LICENSE");
   const [documentName, setDocumentName] = useState("");
   const [licenseFile, setLicenseFile] = useState<File | null>(null);
+  const [licenseName, setLicenseName] = useState("");
 
   const typeOptions = useMemo(() => {
     if (documentTypes.data?.length) return documentTypes.data;
@@ -38,6 +60,21 @@ export function OrganizationDocumentsPanel({ orgId }: { orgId: string }) {
   }, [documentTypes.data]);
 
   const needsName = type === "Other" || type.toUpperCase() === "OTHER";
+
+  const grouped = useMemo(() => {
+    const docs = query.data ?? [];
+    const map = new Map<string, OrgDocument[]>();
+    for (const doc of docs) {
+      const key = versionKey(doc);
+      const list = map.get(key) ?? [];
+      list.push(doc);
+      map.set(key, list);
+    }
+    return Array.from(map.entries()).map(([key, versions]) => ({
+      key,
+      versions: [...versions].sort((a, b) => (b.version ?? 0) - (a.version ?? 0)),
+    }));
+  }, [query.data]);
 
   async function onUpload() {
     if (!file) return;
@@ -62,9 +99,13 @@ export function OrganizationDocumentsPanel({ orgId }: { orgId: string }) {
   async function onUploadLicense() {
     if (!licenseFile) return;
     try {
-      await mutations.uploadBusinessLicense.mutateAsync(licenseFile);
+      await mutations.uploadBusinessLicense.mutateAsync({
+        file: licenseFile,
+        documentName: licenseName.trim() || undefined,
+      });
       toast.success("Business license uploaded.");
       setLicenseFile(null);
+      setLicenseName("");
     } catch (error) {
       toast.error(formatOrgApiError(error, "Upload failed."));
     }
@@ -75,61 +116,100 @@ export function OrganizationDocumentsPanel({ orgId }: { orgId: string }) {
 
   return (
     <div className="space-y-6">
-      {!query.data?.length ? (
+      <label className="flex items-center gap-2 text-sm">
+        <Checkbox
+          checked={includeHistory}
+          onChange={(e) => setIncludeHistory(e.target.checked)}
+        />
+        Show version history
+      </label>
+
+      {!grouped.length ? (
         <EmptyState title="No documents" />
       ) : (
-        <ul className="space-y-2">
-          {query.data.map((doc) => {
-            const label =
-              doc.documentName ||
-              doc.fileName ||
-              doc.docType ||
-              doc.type ||
-              doc.id;
-            return (
-              <li
-                key={doc.id}
-                className="flex items-center justify-between rounded-md border px-3 py-2"
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  <span>{label}</span>
-                  {(doc.docType || doc.type) && (
-                    <span className="text-xs text-muted-foreground">
-                      {doc.docType || doc.type}
-                    </span>
-                  )}
-                  {doc.validationStatus && <StatusBadge status={doc.validationStatus} />}
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      downloadOrgDocument(orgId, doc.id).catch((error) =>
-                        toast.error(formatOrgApiError(error, "Download failed.")),
-                      )
-                    }
+        <ul className="space-y-3">
+          {grouped.map((group) => (
+            <li key={group.key} className="space-y-2 rounded-md border p-3">
+              {group.versions.map((doc) => {
+                const label =
+                  doc.documentName || doc.fileName || doc.docType || doc.type || doc.id;
+                return (
+                  <div
+                    key={doc.id}
+                    className="flex flex-wrap items-center justify-between gap-2"
                   >
-                    Download
-                  </Button>
-                  {canManage && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        mutations.remove
-                          .mutateAsync(doc.id)
-                          .then(() => toast.success("Document removed."))
-                          .catch((error) => toast.error(formatOrgApiError(error)))
-                      }
-                    >
-                      Remove
-                    </Button>
-                  )}
-                </div>
-              </li>
-            );
-          })}
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <span className="font-medium">{label}</span>
+                      {(doc.docType || doc.type) && (
+                        <span className="text-xs text-muted-foreground">
+                          {doc.docType || doc.type}
+                        </span>
+                      )}
+                      {doc.version != null && (
+                        <span className="text-xs text-muted-foreground">v{doc.version}</span>
+                      )}
+                      {doc.current === false && (
+                        <span className="text-xs text-muted-foreground">previous</span>
+                      )}
+                      {doc.validationStatus && <StatusBadge status={doc.validationStatus} />}
+                      <span className="text-xs text-muted-foreground">
+                        Source {documentSourceLabel(doc.source)}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {doc.uploadedByName ?? "—"}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {doc.url && isImageUrl(doc.url, doc.fileName ?? undefined) && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={doc.url}
+                          alt={label}
+                          className="h-10 w-10 rounded object-cover"
+                        />
+                      )}
+                      {doc.url ? (
+                        <a
+                          href={doc.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+                        >
+                          Open
+                        </a>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            downloadOrgDocument(orgId, doc.id).catch((error) =>
+                              toast.error(formatOrgApiError(error, "Download failed.")),
+                            )
+                          }
+                        >
+                          Download
+                        </Button>
+                      )}
+                      {canManage && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            mutations.remove
+                              .mutateAsync(doc.id)
+                              .then(() => toast.success("Document removed."))
+                              .catch((error) => toast.error(formatOrgApiError(error)))
+                          }
+                        >
+                          Remove
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </li>
+          ))}
         </ul>
       )}
 
@@ -167,7 +247,12 @@ export function OrganizationDocumentsPanel({ orgId }: { orgId: string }) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="business-license">Replace business license</Label>
+            <Label htmlFor="business-license">Business license</Label>
+            <Input
+              placeholder="Document name (optional)"
+              value={licenseName}
+              onChange={(e) => setLicenseName(e.target.value)}
+            />
             <Input
               id="business-license"
               type="file"

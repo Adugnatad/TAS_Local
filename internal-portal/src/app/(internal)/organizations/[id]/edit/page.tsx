@@ -13,6 +13,13 @@ export default function EditOrganizationPage() {
 
   if (query.isLoading) return <Skeleton className="h-64 w-full" />;
   if (query.isError || !query.data) return <ErrorState onRetry={() => query.refetch()} />;
+  if (query.data.status === "TERMINATED") {
+    return (
+      <p className="text-sm text-muted-foreground">
+        This organization is terminated and cannot be edited.
+      </p>
+    );
+  }
 
   return (
     <PermissionGuard anyOf={["MANAGE_ORGANIZATIONS"]}>

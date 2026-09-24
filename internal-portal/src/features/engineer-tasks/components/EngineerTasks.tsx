@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import {
   ArrowLeft,
   CalendarDays,
@@ -20,8 +20,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { ErrorState } from "@/components/shared/ErrorState";
-import { completeEngineerTask, fetchEngineerTask, fetchEngineerTasks } from "../api";
-import type { EngineerTask as Task } from "../api";
+import {
+  completeEngineerEstimation,
+  completeEngineerTask,
+  fetchEngineerProcesses,
+  fetchEngineerTask,
+  fetchEngineerTasks,
+} from "../api";
+import type { EngineerProcess, EngineerTask as Task } from "../api";
+import { StatusBadge } from "@/components/shared/StatusBadge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 const fieldClass = "h-10 bg-background";
 const emptyTasks: Task[] = [];
@@ -147,7 +162,13 @@ export function buildEstimationCompletionBody(formData: FormData): FormData {
 
 export function EngineerTasks() {
   const queryClient = useQueryClient();
+  const [tab, setTab] = useState<"tasks" | "processes">("tasks");
   const tasksQuery = useQuery({ queryKey: ["engineer-tasks"], queryFn: fetchEngineerTasks });
+  const processesQuery = useQuery({
+    queryKey: ["engineer-processes"],
+    queryFn: () => fetchEngineerProcesses(true),
+    enabled: tab === "processes",
+  });
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [query, setQuery] = useState("");
   const detailQuery = useQuery({
@@ -156,8 +177,18 @@ export function EngineerTasks() {
     enabled: Boolean(selectedTask),
   });
   const completeMutation = useMutation({
-    mutationFn: ({ taskId, body }: { taskId: string; body: FormData }) =>
-      completeEngineerTask(taskId, body),
+    mutationFn: ({
+      taskId,
+      body,
+      estimation,
+    }: {
+      taskId: string;
+      body: FormData;
+      estimation: boolean;
+    }) =>
+      estimation
+        ? completeEngineerEstimation(taskId, body)
+        : completeEngineerTask(taskId, body),
     onSuccess: async () => {
       setSelectedTask(null);
       await queryClient.invalidateQueries({ queryKey: ["engineer-tasks"] });
@@ -192,6 +223,26 @@ export function EngineerTasks() {
         }
       />
 
+      <div className="flex gap-2">
+        <Button
+          variant={tab === "tasks" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setTab("tasks")}
+        >
+          My tasks
+        </Button>
+        <Button
+          variant={tab === "processes" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setTab("processes")}
+        >
+          Processes
+        </Button>
+      </div>
+
+      {tab === "processes" ? (
+        <EngineerProcessList query={processesQuery} />
+      ) : (
       <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
         <section className="space-y-4" aria-labelledby="active-tasks-heading">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -255,16 +306,54 @@ export function EngineerTasks() {
           )}
         </section>
       </div>
+      )}
 
       {selectedTask && (
         <TaskPanel
           task={detailQuery.data ?? selectedTask}
           onClose={() => setSelectedTask(null)}
-          onComplete={(body) => completeMutation.mutate({ taskId: selectedTask.taskId, body })}
+          onComplete={(body, estimation) =>
+            completeMutation.mutate({ taskId: selectedTask.taskId, body, estimation })
+          }
           isSubmitting={completeMutation.isPending}
-          error={completeMutation.error}
+          error={completeMutation.error instanceof Error ? completeMutation.error : null}
         />
       )}
+    </div>
+  );
+}
+
+function EngineerProcessList({ query }: { query: UseQueryResult<EngineerProcess[]> }) {
+  if (query.isLoading) {
+    return <p className="text-sm text-muted-foreground">Loading processes…</p>;
+  }
+  if (query.isError) return <ErrorState onRetry={() => query.refetch()} />;
+  const rows = query.data ?? [];
+  if (!rows.length) {
+    return <p className="text-sm text-muted-foreground">No engineer processes returned.</p>;
+  }
+  return (
+    <div className="overflow-x-auto rounded-lg border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Process</TableHead>
+            <TableHead>Name</TableHead>
+            <TableHead>Status</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((process) => (
+            <TableRow key={process.processInstanceId}>
+              <TableCell className="font-mono text-xs">{process.processInstanceId}</TableCell>
+              <TableCell>{process.name ?? "—"}</TableCell>
+              <TableCell>
+                {process.status ? <StatusBadge status={process.status} /> : "—"}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 }
@@ -278,7 +367,7 @@ function TaskPanel({
 }: {
   task: Task;
   onClose: () => void;
-  onComplete: (body: FormData) => void;
+  onComplete: (body: FormData, estimation: boolean) => void;
   isSubmitting: boolean;
   error: Error | null;
 }) {
@@ -319,7 +408,10 @@ function TaskPanel({
             onSubmit={(event) => {
               event.preventDefault();
               const formData = new FormData(event.currentTarget);
-              onComplete(isAppointmentDate ? formData : buildEstimationCompletionBody(formData));
+              onComplete(
+                isAppointmentDate ? formData : buildEstimationCompletionBody(formData),
+                !isAppointmentDate,
+              );
             }}
             className="space-y-6"
           >

@@ -20,11 +20,12 @@ import {
 } from "lucide-react";
 import { useOrganization, useOrgLifecycle } from "../hooks";
 import { canAddOrgUsers, formatOrgApiError } from "../tin";
+import { useApprovalRules } from "@/features/signatory-matrix/hooks";
 import { useSession } from "@/features/auth/hooks/useSession";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { cn } from "@/lib/utils";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type NavLink = {
@@ -51,6 +52,10 @@ export function ContractDetailShell({
   const { data: org, isLoading } = useOrganization(orgId);
   const lifecycle = useOrgLifecycle(orgId);
   const addUsersGate = canAddOrgUsers(org);
+  const terminated = org?.status === "TERMINATED";
+  const canWrite = canManage && !terminated;
+  const rules = useApprovalRules(orgId);
+  const hasNoRules = Boolean(org) && !rules.isLoading && (rules.data?.length ?? 0) === 0;
 
   async function run(action: () => Promise<unknown>, ok: string, redirectToList = false) {
     try {
@@ -69,7 +74,7 @@ export function ContractDetailShell({
       icon: LayoutDashboard,
       match: "exact",
     },
-    ...(canManage
+    ...(canWrite
       ? [
           {
             href: `/organizations/${orgId}/edit`,
@@ -159,12 +164,29 @@ export function ContractDetailShell({
 
   return (
     <div className="space-y-4">
-      <Alert className="border-sky-200 bg-sky-50 text-sky-950">
-        <AlertDescription>
-          Review contract details and perform lifecycle actions: update, add user, suspend, activate,
-          terminate, or delete.
-        </AlertDescription>
-      </Alert>
+      {terminated && (
+        <Alert>
+          <AlertTitle>Organization terminated</AlertTitle>
+          <AlertDescription>
+            This organization cannot be changed. Staff can still review existing records.
+          </AlertDescription>
+        </Alert>
+      )}
+      {hasNoRules && !terminated && (
+        <Alert>
+          <AlertTitle>No approval rules configured</AlertTitle>
+          <AlertDescription>
+            Requests may not fail closed until a signatory matrix is in place.{" "}
+            {canSignatory ? (
+              <Link href={`/organizations/${orgId}/signatory/rules`} className="underline">
+                Configure approval rules
+              </Link>
+            ) : (
+              "Ask a BankAdmin to configure the matrix before go-live."
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-3 border-b px-5 py-4">
@@ -218,7 +240,7 @@ export function ContractDetailShell({
               );
             })}
 
-            {canManage && (
+            {canWrite && (
               <div className="mt-3 space-y-1 border-t pt-3">
                 {org?.status === "ACTIVE" && (
                   <Button
@@ -246,20 +268,18 @@ export function ContractDetailShell({
                     Activate
                   </Button>
                 )}
-                {org?.status !== "TERMINATED" && (
-                  <Button
-                    variant="ghost"
-                    className="h-auto w-full justify-start gap-2 px-3 py-2 text-muted-foreground"
-                    onClick={() => {
-                      if (!window.confirm("Terminate this contract? This cannot be undone easily."))
-                        return;
-                      void run(() => lifecycle.terminate.mutateAsync(), "Terminated.");
-                    }}
-                  >
-                    <CircleSlash className="size-4" />
-                    Terminate
-                  </Button>
-                )}
+                <Button
+                  variant="ghost"
+                  className="h-auto w-full justify-start gap-2 px-3 py-2 text-muted-foreground"
+                  onClick={() => {
+                    if (!window.confirm("Terminate this contract? This cannot be undone easily."))
+                      return;
+                    void run(() => lifecycle.terminate.mutateAsync(), "Terminated.");
+                  }}
+                >
+                  <CircleSlash className="size-4" />
+                  Terminate
+                </Button>
                 <Button
                   variant="ghost"
                   className="h-auto w-full justify-start gap-2 px-3 py-2 text-destructive hover:bg-destructive/10 hover:text-destructive"

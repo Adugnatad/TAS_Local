@@ -86,9 +86,17 @@ export const NAV_ITEMS: Array<{
     href: "/rtgs-transfers",
     label: "RTGS Finance",
     permissions: ["ACKNOWLEDGE_RTGS"],
-    allPermissions: ["VIEW_ORGANIZATIONS"],
   },
-  { href: "/status", label: "Status", permissions: [] },
+  {
+    href: "/trade",
+    label: "Trade",
+    permissions: ["VIEW_ORGANIZATIONS", "MANAGE_ORGANIZATIONS"],
+  },
+  {
+    href: "/status",
+    label: "Status",
+    permissions: ["VIEW_ORGANIZATIONS", "MANAGE_ORGANIZATIONS"],
+  },
   { href: "/employees", label: "Employees", permissions: ["MANAGE_EMPLOYEES"] },
   { href: "/engineer-tasks", label: "Engineer", permissions: [] },
   {

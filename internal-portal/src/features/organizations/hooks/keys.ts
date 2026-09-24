@@ -9,7 +9,8 @@ export const orgKeys = {
     [...orgKeys.all, id, "accounts", { includeUnselected }] as const,
   linkable: (id: string, accountNumber?: string) =>
     [...orgKeys.all, id, "accounts", "linkable", accountNumber ?? ""] as const,
-  documents: (id: string) => [...orgKeys.all, id, "documents"] as const,
+  documents: (id: string, includeHistory?: boolean) =>
+    [...orgKeys.all, id, "documents", { includeHistory }] as const,
 };
 
 export type OrgListParams = ApiListParams & { status?: import("@/lib/constants").OrgStatus | "" };

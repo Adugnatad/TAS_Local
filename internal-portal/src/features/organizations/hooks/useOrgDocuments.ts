@@ -2,10 +2,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as api from "../api";
 import { orgKeys } from "./keys";
 
-export function useOrgDocuments(orgId: string) {
+export function useOrgDocuments(orgId: string, options?: { includeHistory?: boolean }) {
+  const includeHistory = options?.includeHistory ?? false;
   return useQuery({
-    queryKey: orgKeys.documents(orgId),
-    queryFn: () => api.fetchOrgDocuments(orgId),
+    queryKey: orgKeys.documents(orgId, includeHistory),
+    queryFn: () => api.fetchOrgDocuments(orgId, { includeHistory }),
     enabled: Boolean(orgId),
   });
 }
@@ -22,7 +23,7 @@ export function useUploadOrgDocument(orgId: string) {
   const qc = useQueryClient();
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: orgKeys.detail(orgId) });
-    qc.invalidateQueries({ queryKey: orgKeys.documents(orgId) });
+    qc.invalidateQueries({ queryKey: [...orgKeys.all, orgId, "documents"] });
   };
   return {
     upload: useMutation({
@@ -34,7 +35,8 @@ export function useUploadOrgDocument(orgId: string) {
       onSuccess: invalidate,
     }),
     uploadBusinessLicense: useMutation({
-      mutationFn: (file: File) => api.uploadBusinessLicense(orgId, file),
+      mutationFn: (input: { file: File; documentName?: string }) =>
+        api.uploadBusinessLicense(orgId, input.file, input.documentName),
       onSuccess: invalidate,
     }),
     remove: useMutation({

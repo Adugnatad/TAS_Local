@@ -20,9 +20,17 @@ export function tinVerificationLabel(
 }
 
 export function canAddOrgUsers(
-  org: Pick<OrganizationDetail, "assignedCseUserId" | "tinValidationStatus"> | null | undefined,
+  org:
+    | (Pick<OrganizationDetail, "assignedCseUserId" | "tinValidationStatus"> & {
+        status?: OrganizationDetail["status"];
+      })
+    | null
+    | undefined,
 ): { ok: boolean; reason?: string } {
   if (!org) return { ok: false, reason: "Organization is still loading." };
+  if (org.status === "TERMINATED") {
+    return { ok: false, reason: "Terminated organizations cannot be changed." };
+  }
   if (!org.assignedCseUserId) {
     return { ok: false, reason: "A CSE must be assigned before adding users." };
   }
@@ -52,7 +60,9 @@ export function formatOrgApiError(error: unknown, fallback = "Request failed."):
   }
   if (error.code === "NOT_A_CSE") return "Selected user is not a BankCSE employee.";
   if (error.code === "CSE_INACTIVE") return "Selected CSE is not active.";
-  if (error.code === "TERMINATED") return "Cannot assign a CSE to a terminated organization.";
+  if (error.code === "TERMINATED") {
+    return "This organization is terminated and cannot be changed.";
+  }
   if (error.code === "CRM_ID_EXISTS") return "This CRM system ID is already in use.";
   if (error.code === "DOCUMENT_TYPE_REQUIRED") return "Document type is required.";
   if (error.code === "UNKNOWN_DOCUMENT_TYPE") return "Unknown document type.";
@@ -75,6 +85,12 @@ export function formatOrgApiError(error: unknown, fallback = "Request failed."):
   }
   if (error.code === "ACCOUNT_LINKED_TO_ANOTHER_ORG") {
     return "That account is already registered to another organization.";
+  }
+  if (error.code === "NO_CBS_CUSTOMER") {
+    return "This organization has no Core Banking customer to list accounts from.";
+  }
+  if (error.code === "PRIMARY_ACCOUNT") {
+    return "The primary account cannot be deselected. Make another account primary first.";
   }
   if (error.code === "VALIDATION_FAILED" && error.fieldErrors?.length) {
     return error.fieldErrors.map((fe) => `${fe.field}: ${fe.message}`).join(" · ");

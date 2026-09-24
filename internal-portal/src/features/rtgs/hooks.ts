@@ -7,6 +7,15 @@ const rtgsKeys = {
   detail: (id: string) => ["rtgs", "detail", id] as const,
 };
 
+export function useRtgsQueueCount(enabled = true) {
+  return useQuery({
+    queryKey: [...rtgsKeys.all, "count"] as const,
+    queryFn: () => api.fetchAwaitingAcknowledgement({ page: 0, size: 1 }),
+    refetchInterval: 60_000,
+    enabled,
+  });
+}
+
 export function useRtgsQueue(page: number, size: number) {
   return useQuery({
     queryKey: rtgsKeys.queue(page, size),

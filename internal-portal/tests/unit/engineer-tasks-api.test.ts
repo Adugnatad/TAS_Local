@@ -61,7 +61,7 @@ describe("engineer task normalization", () => {
 
     const body = buildEstimationCompletionBody(formData);
 
-    expect([...body.keys()]).toEqual(["request"]);
+    expect(Array.from(body.keys())).toEqual(["request"]);
     expect(JSON.parse(body.get("request") as string)).toMatchObject({
       plotArea: "450",
       propertyTown: "Major Cities C1",

@@ -212,10 +212,14 @@ export function LoanRequestList({ orgId }: { orgId: string }) {
 
   return (
     <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Read-only oversight. Organization INITIATE users create and submit requests in the customer
+        portal; staff cannot sign them through.
+      </p>
       {!items.length ? (
         <EmptyState
           title="No loan requests"
-          description="Loan requests are created by organization users in the customer portal."
+          description="Bank staff can view requests and matrix status. Organization INITIATE users create and submit requests in the customer portal."
         />
       ) : (
         <div className="overflow-x-auto rounded-lg border">

@@ -97,7 +97,7 @@ export function OrganizationOverview({ orgId }: { orgId: string }) {
   const users = useOrgUsers(orgId, { page: 0, size: 20 });
   const userMutations = useOrgUserMutations(orgId);
   const employees = useEmployees({ page: 0, size: 100 });
-  const canManage = can("MANAGE_ORGANIZATIONS");
+  const canManage = can("MANAGE_ORGANIZATIONS") && query.data?.status !== "TERMINATED";
   const [assignOpen, setAssignOpen] = useState(false);
   const [selectedCseId, setSelectedCseId] = useState("");
 

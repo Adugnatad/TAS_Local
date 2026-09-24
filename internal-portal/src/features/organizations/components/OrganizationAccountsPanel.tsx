@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Plus, RefreshCw } from "lucide-react";
-import { useLinkableAccounts, useOrgAccountMutations, useOrgAccounts } from "../hooks";
+import { useLinkableAccounts, useOrgAccountMutations, useOrgAccounts, useOrganization } from "../hooks";
 import { validateAccountSelection } from "../schemas";
 import { formatOrgApiError } from "../tin";
 import { useSession } from "@/features/auth/hooks/useSession";
@@ -31,7 +31,8 @@ function displayValue(value: string | null | undefined) {
 
 export function OrganizationAccountsPanel({ orgId }: { orgId: string }) {
   const { can } = useSession();
-  const canManage = can("MANAGE_ORGANIZATIONS");
+  const org = useOrganization(orgId);
+  const canManage = can("MANAGE_ORGANIZATIONS") && org.data?.status !== "TERMINATED";
   const [includeUnselected, setIncludeUnselected] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
   const [seedAccountNo, setSeedAccountNo] = useState("");
@@ -191,20 +192,6 @@ export function OrganizationAccountsPanel({ orgId }: { orgId: string }) {
                         }
                       >
                         Deselect
-                      </Button>
-                    )}
-                    {account.id && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() =>
-                          mutations.remove
-                            .mutateAsync(account.id!)
-                            .then(() => toast.success("Account hidden."))
-                            .catch((error) => toast.error(formatOrgApiError(error)))
-                        }
-                      >
-                        Hide
                       </Button>
                     )}
                   </TableCell>

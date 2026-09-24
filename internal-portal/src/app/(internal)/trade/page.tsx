@@ -1,10 +1,10 @@
-import { LoanProcessList } from "@/features/status-viewer/components/LoanProcessViews";
 import { PermissionGuard } from "@/components/layout/RBACGuard";
+import { TradeProcessList } from "@/features/trade/components/TradeProcessViews";
 
-export default function StatusPage() {
+export default function TradePage() {
   return (
     <PermissionGuard anyOf={["VIEW_ORGANIZATIONS", "MANAGE_ORGANIZATIONS"]}>
-      <LoanProcessList />
+      <TradeProcessList />
     </PermissionGuard>
   );
 }

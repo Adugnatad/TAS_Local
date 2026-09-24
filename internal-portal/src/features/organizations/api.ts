@@ -4,7 +4,6 @@ import type { OrgStatus } from "@/lib/constants";
 import type {
   CreateOrgUserInput,
   OrgAccount,
-  OrgAccountInput,
   OrgDocument,
   DocumentTypeOption,
   AccountLookupResponse,
@@ -177,35 +176,17 @@ export async function refreshOrgAccounts(orgId: string): Promise<OrgAccount[]> {
   return Array.isArray(data) ? data : data.content;
 }
 
-export async function createOrgAccount(
-  orgId: string,
-  input: OrgAccountInput,
-): Promise<OrgAccount> {
-  return apiClient(`/organizations/${orgId}/accounts`, { method: "POST", body: input });
-}
-
-export async function updateOrgAccount(
-  orgId: string,
-  accountId: string,
-  input: OrgAccountInput,
-): Promise<OrgAccount> {
-  return apiClient(`/organizations/${orgId}/accounts/${accountId}`, {
-    method: "PUT",
-    body: input,
-  });
-}
-
 export async function setPrimaryOrgAccount(orgId: string, accountId: string): Promise<OrgAccount> {
   return apiClient(`/organizations/${orgId}/accounts/${accountId}/set-primary`, { method: "POST" });
 }
 
-export async function deleteOrgAccount(orgId: string, accountId: string): Promise<void> {
-  return apiClient(`/organizations/${orgId}/accounts/${accountId}`, { method: "DELETE" });
-}
-
-export async function fetchOrgDocuments(orgId: string): Promise<OrgDocument[]> {
+export async function fetchOrgDocuments(
+  orgId: string,
+  options?: { includeHistory?: boolean },
+): Promise<OrgDocument[]> {
   const data = await apiClient<OrgDocument[] | { content: OrgDocument[] }>(
     `/organizations/${orgId}/documents`,
+    { params: options?.includeHistory ? { includeHistory: true } : undefined },
   );
   return Array.isArray(data) ? data : data.content;
 }
@@ -260,12 +241,14 @@ export async function uploadOrgDocument(
 export async function uploadBusinessLicense(
   orgId: string,
   file: File,
+  documentName?: string,
 ): Promise<OrganizationDetail | unknown> {
   const form = new FormData();
   form.append("file", file);
   return apiClient(`/organizations/${orgId}/business-license`, {
     method: "POST",
     body: form,
+    params: documentName ? { documentName } : undefined,
   });
 }
 

@@ -22,6 +22,11 @@ export interface OrgDocument {
   documentName?: string | null;
   fileName?: string;
   validationStatus?: ValidationStatus;
+  source?: string | null;
+  uploadedByName?: string | null;
+  url?: string | null;
+  version?: number | null;
+  current?: boolean;
 }
 
 export interface DocumentTypeOption {
@@ -122,6 +127,7 @@ export interface AccountLookupResponse {
   customerId?: string;
   customerName?: string;
   accounts?: AccountLookupAccount[];
+  listingComplete?: boolean;
 }
 
 export interface LinkableAccount {

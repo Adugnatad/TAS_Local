@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, Landmark, LogOut, Menu, Shield, UserRound, Users } from "lucide-react";
+import { Building2, HardHat, Landmark, LogOut, Menu, Shield, Ship, UserRound, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/constants";
 import { useSession } from "@/features/auth/hooks/useSession";
@@ -12,11 +12,15 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { BrandLogo } from "@/components/layout/BrandLogo";
 import { NotificationBell } from "@/features/notifications/components/NotificationBell";
+import { useRtgsQueueCount } from "@/features/rtgs/hooks";
 
 const iconMap: Record<string, typeof Building2> = {
   "/organizations": Building2,
   "/rtgs-transfers": Landmark,
+  "/trade": Ship,
+  "/status": Building2,
   "/employees": Users,
+  "/engineer-tasks": HardHat,
   "/roles": Shield,
   "/profile": UserRound,
 };
@@ -32,8 +36,11 @@ function BrandMark() {
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
-  const { user, canAny } = useSession();
+  const { user, can, canAny } = useSession();
   const isBankEngineer = user?.roles?.includes("BankEngineer") ?? false;
+  const canRtgs = can("ACKNOWLEDGE_RTGS");
+  const rtgsQueue = useRtgsQueueCount(canRtgs);
+  const rtgsCount = canRtgs ? (rtgsQueue.data?.totalElements ?? 0) : 0;
 
   return (
     <nav className="flex flex-col gap-0.5" aria-label="Main navigation">
@@ -60,7 +67,12 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
             aria-current={isActive ? "page" : undefined}
           >
             <Icon className={cn("h-4 w-4", isActive && "text-primary")} aria-hidden="true" />
-            {item.label}
+            <span className="flex-1">{item.label}</span>
+            {item.href === "/rtgs-transfers" && rtgsCount > 0 && (
+              <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                {rtgsCount > 99 ? "99+" : rtgsCount}
+              </span>
+            )}
           </Link>
         );
       })}

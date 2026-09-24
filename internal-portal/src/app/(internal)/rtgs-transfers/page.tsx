@@ -5,7 +5,7 @@ import { RtgsAcknowledgementView } from "@/features/rtgs/components/RtgsAcknowle
 
 export default function RtgsTransfersPage() {
   return (
-    <PermissionGuard allOf={["ACKNOWLEDGE_RTGS", "VIEW_ORGANIZATIONS"]}>
+    <PermissionGuard anyOf={["ACKNOWLEDGE_RTGS"]}>
       <RtgsAcknowledgementView />
     </PermissionGuard>
   );

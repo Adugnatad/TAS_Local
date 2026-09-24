@@ -11,7 +11,6 @@ import { ErrorState } from "@/components/shared/ErrorState";
 import { TableSkeleton } from "@/components/shared/TableSkeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { useSession } from "@/features/auth/hooks/useSession";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -26,7 +25,6 @@ import {
   fetchLoanProcess,
   fetchLoanProcessStatus,
   fetchLoanProcesses,
-  fetchMyLoanProcesses,
   loanProcessId,
   loanProcessRows,
 } from "../loan-process-api";
@@ -51,12 +49,9 @@ function processStatus(process: LoanProcess) {
 }
 
 export function LoanProcessList() {
-  const { user } = useSession();
-  const isAdmin =
-    user?.roles?.some((role) => ["admin", "ADMIN", "Admin", "BankAdmin"].includes(role)) ?? false;
   const query = useQuery({
-    queryKey: ["loan-processes", isAdmin ? "all" : "mine"],
-    queryFn: isAdmin ? fetchLoanProcesses : fetchMyLoanProcesses,
+    queryKey: ["loan-processes", "all"],
+    queryFn: fetchLoanProcesses,
   });
   const rows = loanProcessRows(query.data).filter((item) => loanProcessId(item));
 
@@ -107,16 +102,12 @@ export function LoanProcessList() {
                 return (
                   <TableRow key={id}>
                     <TableCell>
-                      {isAdmin ? (
-                        <Link
-                          className="font-medium text-primary hover:underline"
-                          href={`/status/${encodeURIComponent(id)}`}
-                        >
-                          {id}
-                        </Link>
-                      ) : (
-                        <span className="font-medium">{id}</span>
-                      )}
+                      <Link
+                        className="font-medium text-primary hover:underline"
+                        href={`/status/${encodeURIComponent(id)}`}
+                      >
+                        {id}
+                      </Link>
                     </TableCell>
                     <TableCell>
                       {value(
