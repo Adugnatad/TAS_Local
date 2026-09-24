@@ -92,6 +92,7 @@ export interface OrganizationDetail {
 
 export interface OrganizationWritePayload {
   name: string;
+  businessLicenseNames?: string[];
   formOfBusiness?: string;
   segment?: string;
   tin?: string;

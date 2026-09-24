@@ -35,7 +35,7 @@ export function useUploadOrgDocument(orgId: string) {
       onSuccess: invalidate,
     }),
     uploadBusinessLicense: useMutation({
-      mutationFn: (input: { file: File; documentName?: string }) =>
+      mutationFn: (input: { file: File; documentName: string }) =>
         api.uploadBusinessLicense(orgId, input.file, input.documentName),
       onSuccess: invalidate,
     }),

@@ -14,11 +14,7 @@ import {
 import { useAccountLookup, useCreateOrganization, useUpdateOrganization } from "../hooks";
 import type { AccountLookupResponse, OrganizationDetail, OrganizationWritePayload } from "../types";
 import { formatOrgApiError } from "../tin";
-import {
-  FORM_OF_BUSINESS_OPTIONS,
-  normalizeFormOfBusiness,
-  SEGMENT_OPTIONS,
-} from "../constants";
+import { FORM_OF_BUSINESS_OPTIONS, normalizeFormOfBusiness, SEGMENT_OPTIONS } from "../constants";
 import { useEmployees } from "@/features/employees/hooks";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { cn } from "@/lib/utils";
@@ -97,6 +93,8 @@ function tinStatusMessage(status: string): string {
   return "TIN verification pending — this is normal.";
 }
 
+type LicenseUpload = { name: string; file: File | null };
+
 export function OrganizationForm({
   organization,
   embedded = false,
@@ -109,7 +107,7 @@ export function OrganizationForm({
   const create = useCreateOrganization();
   const update = useUpdateOrganization(organization?.id ?? "");
   const lookup = useAccountLookup();
-  const [file, setFile] = useState<File | null>(null);
+  const [licenses, setLicenses] = useState<LicenseUpload[]>([{ name: "", file: null }]);
   const [lookupResult, setLookupResult] = useState<AccountLookupResponse | null>(null);
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [selectedAccountNos, setSelectedAccountNos] = useState<Set<string>>(new Set());
@@ -197,9 +195,19 @@ export function OrganizationForm({
           toast.error(selectionError);
           return;
         }
+        if (licenses.some((license) => license.file && !license.name.trim())) {
+          toast.error("Each business license file requires a name.");
+          return;
+        }
+        const selectedLicenses = licenses.filter(
+          (license): license is { name: string; file: File } => Boolean(license.file),
+        );
         const result = await create.mutateAsync({
-          payload: toCreatePayload(values, Array.from(selectedAccountNos)),
-          file,
+          payload: {
+            ...toCreatePayload(values, Array.from(selectedAccountNos)),
+            businessLicenseNames: selectedLicenses.map((license) => license.name.trim()),
+          },
+          files: selectedLicenses.map((license) => license.file),
         });
         toast.success("Organization created.");
         toast.message(tinStatusMessage(result.tinValidationStatus));
@@ -522,13 +530,61 @@ export function OrganizationForm({
                     )}
                   />
                   <div className="sm:col-span-2 space-y-2">
-                    <Label htmlFor="license">Business license (optional)</Label>
-                    <Input
-                      id="license"
-                      type="file"
-                      accept=".pdf,.png,.jpg,.jpeg"
-                      onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                    />
+                    <Label>Business licenses (optional)</Label>
+                    {licenses.map((license, index) => (
+                      <div key={index} className="flex flex-wrap gap-2">
+                        <Input
+                          aria-label={`Business license ${index + 1} name`}
+                          placeholder="Document name"
+                          value={license.name}
+                          onChange={(e) =>
+                            setLicenses((current) =>
+                              current.map((item, itemIndex) =>
+                                itemIndex === index ? { ...item, name: e.target.value } : item,
+                              ),
+                            )
+                          }
+                          className="min-w-56 flex-1"
+                        />
+                        <Input
+                          aria-label={`Business license ${index + 1} file`}
+                          type="file"
+                          accept=".pdf,.png,.jpg,.jpeg"
+                          onChange={(e) =>
+                            setLicenses((current) =>
+                              current.map((item, itemIndex) =>
+                                itemIndex === index
+                                  ? { ...item, file: e.target.files?.[0] ?? null }
+                                  : item,
+                              ),
+                            )
+                          }
+                          className="min-w-56 flex-1"
+                        />
+                        {licenses.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() =>
+                              setLicenses((current) =>
+                                current.filter((_, itemIndex) => itemIndex !== index),
+                              )
+                            }
+                          >
+                            Remove
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() =>
+                        setLicenses((current) => [...current, { name: "", file: null }])
+                      }
+                    >
+                      Add another license
+                    </Button>
                   </div>
                 </>
               )}

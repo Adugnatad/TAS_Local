@@ -98,10 +98,14 @@ export function OrganizationDocumentsPanel({ orgId }: { orgId: string }) {
 
   async function onUploadLicense() {
     if (!licenseFile) return;
+    if (!licenseName.trim()) {
+      toast.error("Business license name is required.");
+      return;
+    }
     try {
       await mutations.uploadBusinessLicense.mutateAsync({
         file: licenseFile,
-        documentName: licenseName.trim() || undefined,
+        documentName: licenseName.trim(),
       });
       toast.success("Business license uploaded.");
       setLicenseFile(null);
@@ -117,10 +121,7 @@ export function OrganizationDocumentsPanel({ orgId }: { orgId: string }) {
   return (
     <div className="space-y-6">
       <label className="flex items-center gap-2 text-sm">
-        <Checkbox
-          checked={includeHistory}
-          onChange={(e) => setIncludeHistory(e.target.checked)}
-        />
+        <Checkbox checked={includeHistory} onChange={(e) => setIncludeHistory(e.target.checked)} />
         Show version history
       </label>
 
@@ -131,13 +132,9 @@ export function OrganizationDocumentsPanel({ orgId }: { orgId: string }) {
           {grouped.map((group) => (
             <li key={group.key} className="space-y-2 rounded-md border p-3">
               {group.versions.map((doc) => {
-                const label =
-                  doc.documentName || doc.fileName || doc.docType || doc.type || doc.id;
+                const label = doc.documentName || doc.fileName || doc.docType || doc.type || doc.id;
                 return (
-                  <div
-                    key={doc.id}
-                    className="flex flex-wrap items-center justify-between gap-2"
-                  >
+                  <div key={doc.id} className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
                       <span className="font-medium">{label}</span>
                       {(doc.docType || doc.type) && (
@@ -162,11 +159,7 @@ export function OrganizationDocumentsPanel({ orgId }: { orgId: string }) {
                     <div className="flex flex-wrap gap-2">
                       {doc.url && isImageUrl(doc.url, doc.fileName ?? undefined) && (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={doc.url}
-                          alt={label}
-                          className="h-10 w-10 rounded object-cover"
-                        />
+                        <img src={doc.url} alt={label} className="h-10 w-10 rounded object-cover" />
                       )}
                       {doc.url ? (
                         <a
@@ -247,9 +240,10 @@ export function OrganizationDocumentsPanel({ orgId }: { orgId: string }) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="business-license">Business license</Label>
+            <Label htmlFor="business-license-name">Business license name</Label>
             <Input
-              placeholder="Document name (optional)"
+              id="business-license-name"
+              placeholder="Document name"
               value={licenseName}
               onChange={(e) => setLicenseName(e.target.value)}
             />
@@ -261,7 +255,9 @@ export function OrganizationDocumentsPanel({ orgId }: { orgId: string }) {
             />
             <Button
               onClick={onUploadLicense}
-              disabled={!licenseFile || mutations.uploadBusinessLicense.isPending}
+              disabled={
+                !licenseFile || !licenseName.trim() || mutations.uploadBusinessLicense.isPending
+              }
             >
               Upload license
             </Button>

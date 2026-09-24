@@ -23,11 +23,11 @@ export function useCreateOrganization() {
   return useMutation({
     mutationFn: ({
       payload,
-      file,
+      files,
     }: {
       payload: OrganizationWritePayload;
-      file?: File | null;
-    }) => api.createOrganization(payload, file),
+      files?: File[] | null;
+    }) => api.createOrganization(payload, files),
     onSuccess: () => qc.invalidateQueries({ queryKey: orgKeys.all }),
   });
 }
@@ -51,7 +51,10 @@ export function useOrgLifecycle(id: string) {
   const invalidate = () => qc.invalidateQueries({ queryKey: orgKeys.all });
   return {
     suspend: useMutation({ mutationFn: () => api.suspendOrganization(id), onSuccess: invalidate }),
-    activate: useMutation({ mutationFn: () => api.activateOrganization(id), onSuccess: invalidate }),
+    activate: useMutation({
+      mutationFn: () => api.activateOrganization(id),
+      onSuccess: invalidate,
+    }),
     terminate: useMutation({
       mutationFn: () => api.terminateOrganization(id),
       onSuccess: invalidate,

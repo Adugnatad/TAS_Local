@@ -27,14 +27,11 @@ export async function fetchOrganization(id: string): Promise<OrganizationDetail>
 
 export async function createOrganization(
   payload: OrganizationWritePayload,
-  businessLicense?: File | null,
+  businessLicenses?: File[] | null,
 ): Promise<OrganizationDetail> {
   const form = new FormData();
-  form.append(
-    "data",
-    new Blob([JSON.stringify(payload)], { type: "application/json" }),
-  );
-  if (businessLicense) {
+  form.append("data", new Blob([JSON.stringify(payload)], { type: "application/json" }));
+  for (const businessLicense of businessLicenses ?? []) {
     form.append("businessLicense", businessLicense);
   }
   return apiClient("/organizations", { method: "POST", body: form });
@@ -241,7 +238,7 @@ export async function uploadOrgDocument(
 export async function uploadBusinessLicense(
   orgId: string,
   file: File,
-  documentName?: string,
+  documentName: string,
 ): Promise<OrganizationDetail | unknown> {
   const form = new FormData();
   form.append("file", file);
@@ -253,9 +250,7 @@ export async function uploadBusinessLicense(
 }
 
 export async function downloadOrgDocument(orgId: string, documentId: string): Promise<void> {
-  const { blob, filename } = await apiDownload(
-    `/organizations/${orgId}/documents/${documentId}`,
-  );
+  const { blob, filename } = await apiDownload(`/organizations/${orgId}/documents/${documentId}`);
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
