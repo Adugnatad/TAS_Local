@@ -66,7 +66,18 @@ export function formatOrgApiError(error: unknown, fallback = "Request failed."):
   if (error.code === "CUSTOMER_ID_REQUIRED") return "Customer ID from account lookup is required.";
   if (error.code === "CBS_ACCOUNT_NOT_FOUND") return "Account not found in core banking.";
   if (error.code === "CBS_CUSTOMER_MISMATCH") {
-    return "Customer ID does not match the account in core banking.";
+    return "A selected account belongs to a different customer. This attempt has been audited.";
+  }
+  if (error.code === "SEGMENT_REQUIRED") return "Select a segment for this organization.";
+  if (error.code === "FORM_OF_BUSINESS_REQUIRED") return "Select a form of business.";
+  if (error.code === "TOO_MANY_ACCOUNTS") {
+    return "Select at most 20 accounts. Register the rest after creation.";
+  }
+  if (error.code === "ACCOUNT_LINKED_TO_ANOTHER_ORG") {
+    return "That account is already registered to another organization.";
+  }
+  if (error.code === "VALIDATION_FAILED" && error.fieldErrors?.length) {
+    return error.fieldErrors.map((fe) => `${fe.field}: ${fe.message}`).join(" · ");
   }
   return error.message;
 }

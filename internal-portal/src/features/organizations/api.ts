@@ -8,6 +8,7 @@ import type {
   OrgDocument,
   DocumentTypeOption,
   AccountLookupResponse,
+  LinkableAccountsResponse,
   OrganizationDetail,
   OrganizationSummary,
   OrganizationUser,
@@ -129,11 +130,39 @@ export async function resetOrgUserPassword(
   });
 }
 
-export async function fetchOrgAccounts(orgId: string): Promise<OrgAccount[]> {
+export async function fetchOrgAccounts(
+  orgId: string,
+  options?: { includeUnselected?: boolean },
+): Promise<OrgAccount[]> {
   const data = await apiClient<OrgAccount[] | { content: OrgAccount[] }>(
     `/organizations/${orgId}/accounts`,
+    { params: options?.includeUnselected ? { includeUnselected: true } : undefined },
   );
   return Array.isArray(data) ? data : data.content;
+}
+
+export async function fetchLinkableAccounts(
+  orgId: string,
+  accountNumber?: string,
+): Promise<LinkableAccountsResponse> {
+  return apiClient(`/organizations/${orgId}/accounts/linkable`, {
+    params: accountNumber ? { accountNumber } : undefined,
+  });
+}
+
+export async function linkOrgAccounts(
+  orgId: string,
+  accountNumbers: string[],
+): Promise<OrgAccount[]> {
+  const data = await apiClient<OrgAccount[] | { content: OrgAccount[] }>(
+    `/organizations/${orgId}/accounts`,
+    { method: "POST", body: { accountNumbers } },
+  );
+  return Array.isArray(data) ? data : data.content;
+}
+
+export async function deselectOrgAccount(orgId: string, accountId: string): Promise<OrgAccount> {
+  return apiClient(`/organizations/${orgId}/accounts/${accountId}/deselect`, { method: "POST" });
 }
 
 export async function lookupAccount(accountNumber: string): Promise<AccountLookupResponse> {

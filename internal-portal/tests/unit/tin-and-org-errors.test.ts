@@ -64,6 +64,24 @@ describe("formatOrgApiError", () => {
     expect(formatOrgApiError(new ApiError(400, "x", "ACCOUNT_REQUIRED"))).toMatch(/account number/i);
     expect(formatOrgApiError(new ApiError(400, "x", "CUSTOMER_ID_REQUIRED"))).toMatch(/customer id/i);
     expect(formatOrgApiError(new ApiError(400, "x", "CBS_ACCOUNT_NOT_FOUND"))).toMatch(/not found/i);
-    expect(formatOrgApiError(new ApiError(400, "x", "CBS_CUSTOMER_MISMATCH"))).toMatch(/does not match/i);
+    expect(formatOrgApiError(new ApiError(400, "x", "CBS_CUSTOMER_MISMATCH"))).toMatch(/audited/i);
+  });
+
+  it("maps registration error codes", () => {
+    expect(formatOrgApiError(new ApiError(400, "x", "SEGMENT_REQUIRED"))).toMatch(/segment/i);
+    expect(formatOrgApiError(new ApiError(400, "x", "FORM_OF_BUSINESS_REQUIRED"))).toMatch(
+      /form of business/i,
+    );
+    expect(formatOrgApiError(new ApiError(400, "x", "TOO_MANY_ACCOUNTS"))).toMatch(/20 accounts/i);
+    expect(formatOrgApiError(new ApiError(409, "x", "ACCOUNT_LINKED_TO_ANOTHER_ORG"))).toMatch(
+      /another organization/i,
+    );
+  });
+
+  it("surfaces VALIDATION_FAILED field errors", () => {
+    const error = new ApiError(400, "Validation failed", "VALIDATION_FAILED", [
+      { field: "tin", message: "must be 10 digits" },
+    ]);
+    expect(formatOrgApiError(error)).toBe("tin: must be 10 digits");
   });
 });

@@ -21,3 +21,4 @@ npm-debug.log*
 *.tsbuildinfo
 internal-portal/.env.example
 internal-portal/internal-portal-org-and-finance-api.md
+docs/

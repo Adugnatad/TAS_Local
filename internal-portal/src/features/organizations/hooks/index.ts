@@ -9,5 +9,5 @@ export {
   useAccountLookup,
 } from "./useOrganizations";
 export { useOrgUsers, useCreateOrgUser, useOrgUserMutations } from "./useOrgUsers";
-export { useOrgAccounts, useOrgAccountMutations } from "./useOrgAccounts";
+export { useOrgAccounts, useLinkableAccounts, useOrgAccountMutations } from "./useOrgAccounts";
 export { useOrgDocuments, useUploadOrgDocument, useDocumentTypes } from "./useOrgDocuments";

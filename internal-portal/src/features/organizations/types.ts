@@ -3,9 +3,16 @@ import type { OrgStatus, OrgUserRole, PermissionType, ValidationStatus } from "@
 export interface OrgAccount {
   id?: string;
   accountNo: string;
-  currency: string;
-  accountType: string;
+  currency: string | null;
+  accountType: string | null;
   primary: boolean;
+  selected?: boolean;
+  accountStatus?: string | null;
+  productName?: string | null;
+  branch?: string | null;
+  holderName?: string | null;
+  iban?: string | null;
+  infoFetchedAt?: string | null;
 }
 
 export interface OrgDocument {
@@ -26,6 +33,7 @@ export interface OrganizationSummary {
   id: string;
   name: string;
   formOfBusiness?: string | null;
+  segment?: string | null;
   tin: string | null;
   status: OrgStatus;
   tinValidationStatus: ValidationStatus;
@@ -49,6 +57,7 @@ export interface OrganizationDetail {
   id: string;
   name: string;
   formOfBusiness: string | null;
+  segment: string | null;
   tin: string | null;
   tinValidationStatus: ValidationStatus;
   tinValidationReason: string | null;
@@ -79,10 +88,10 @@ export interface OrganizationDetail {
 export interface OrganizationWritePayload {
   name: string;
   formOfBusiness?: string;
+  segment?: string;
   tin?: string;
   phone?: string;
   address?: string;
-  crmSystemId?: string;
   description?: string;
   effectiveDate?: string;
   expiryDate?: string;
@@ -91,6 +100,7 @@ export interface OrganizationWritePayload {
   alwaysUseBuyingPriceForFCYConversion?: boolean;
   accountNumber?: string;
   customerId?: string;
+  accountNumbers?: string[];
   accounts?: Array<{
     accountNo: string;
     currency: string;
@@ -101,9 +111,9 @@ export interface OrganizationWritePayload {
 
 export interface AccountLookupAccount {
   accountNo: string;
-  currency: string;
-  accountType: string;
-  status: string;
+  currency: string | null;
+  accountType: string | null;
+  status: string | null;
 }
 
 export interface AccountLookupResponse {
@@ -112,6 +122,19 @@ export interface AccountLookupResponse {
   customerId?: string;
   customerName?: string;
   accounts?: AccountLookupAccount[];
+}
+
+export interface LinkableAccount {
+  accountNo: string;
+  currency?: string | null;
+  accountType?: string | null;
+  status?: string | null;
+  alreadyLinked: boolean;
+}
+
+export interface LinkableAccountsResponse {
+  accounts: LinkableAccount[];
+  listingComplete: boolean;
 }
 
 export interface OrganizationUser {

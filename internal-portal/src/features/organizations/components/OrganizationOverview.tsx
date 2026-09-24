@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { format, parseISO, isValid } from "date-fns";
 import { toast } from "sonner";
-import { MoreVertical } from "lucide-react";
+import { CheckCircle2, Circle, MoreVertical } from "lucide-react";
 import {
   useAssignOrganizationCse,
   useOrganization,
@@ -65,6 +65,30 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
+function OnboardingStep({
+  done,
+  label,
+  action,
+}: {
+  done: boolean;
+  label: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <li className="flex items-center justify-between gap-3 py-2">
+      <div className="flex items-center gap-2 text-sm">
+        {done ? (
+          <CheckCircle2 className="size-4 text-green-600" aria-hidden />
+        ) : (
+          <Circle className="size-4 text-muted-foreground" aria-hidden />
+        )}
+        <span className={done ? "text-muted-foreground" : "font-medium"}>{label}</span>
+      </div>
+      {!done && action}
+    </li>
+  );
+}
+
 export function OrganizationOverview({ orgId }: { orgId: string }) {
   const { can } = useSession();
   const query = useOrganization(orgId);
@@ -118,6 +142,22 @@ export function OrganizationOverview({ orgId }: { orgId: string }) {
   const infoRows: Array<{ label: string; value: React.ReactNode }> = [
     { label: "Customer ID", value: org.cbsCustomerId || org.crmSystemId || org.tin || "—" },
     { label: "Form of business", value: org.formOfBusiness ?? "Missing" },
+    {
+      label: "Segment",
+      value: org.segment ?? (
+        <span>
+          Not set
+          {canManage && (
+            <>
+              {" — "}
+              <Link href={`/organizations/${orgId}/edit`} className="text-primary underline">
+                set on edit
+              </Link>
+            </>
+          )}
+        </span>
+      ),
+    },
     { label: "TIN", value: org.tin ?? "—" },
     { label: "Phone", value: org.phone ?? "—" },
     { label: "Address", value: org.address ?? "—" },
@@ -159,68 +199,82 @@ export function OrganizationOverview({ orgId }: { orgId: string }) {
         </Alert>
       )}
 
-      {!hasCse && (
-        <Alert>
-          <AlertTitle>CSE not assigned</AlertTitle>
-          <AlertDescription>
-            A CSE must be assigned before adding users. Organization users and signatory setup stay
-            blocked until then.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {org.tinValidationStatus !== "VALIDATED" && (
-        <Alert>
-          <AlertTitle>Organization not validated</AlertTitle>
-          <AlertDescription>
-            Users cannot be added until TIN is validated. Loan submit also stays blocked
-            (ORG_NOT_VERIFIED) until verify-tin or team verification succeeds.
-            {org.tinValidationReason ? ` ${org.tinValidationReason}` : ""}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {canManage && (
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setSelectedCseId(org.assignedCseUserId ?? "");
-              setAssignOpen(true);
-            }}
-          >
-            {hasCse ? "Reassign CSE" : "Assign CSE"}
-          </Button>
-          {org.tinValidationStatus !== "VALIDATED" && (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  run(() => lifecycle.verifyTin.mutateAsync(), "TIN verification complete.")
-                }
-              >
-                Verify TIN (eTrade)
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const note = window.prompt("Team verification note");
-                  if (!note?.trim()) return;
-                  void run(
-                    () => lifecycle.verifyManual.mutateAsync(note.trim()),
-                    "Marked verified by team.",
-                  );
-                }}
-              >
-                Team verify
-              </Button>
-            </>
-          )}
-        </div>
-      )}
+      <section className="rounded-lg border bg-background p-4 shadow-sm">
+        <SectionTitle>Onboarding checklist</SectionTitle>
+        <ol className="divide-y">
+          <OnboardingStep done label="Organization created" />
+          <OnboardingStep
+            done={hasCse}
+            label="CSE assigned"
+            action={
+              canManage ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedCseId(org.assignedCseUserId ?? "");
+                    setAssignOpen(true);
+                  }}
+                >
+                  {hasCse ? "Reassign" : "Assign CSE"}
+                </Button>
+              ) : undefined
+            }
+          />
+          <OnboardingStep
+            done={org.tinValidationStatus === "VALIDATED"}
+            label="TIN verified"
+            action={
+              canManage && org.tinValidationStatus !== "VALIDATED" ? (
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      run(() => lifecycle.verifyTin.mutateAsync(), "TIN verification complete.")
+                    }
+                  >
+                    Verify TIN
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const note = window.prompt("Team verification note");
+                      if (!note?.trim()) return;
+                      void run(
+                        () => lifecycle.verifyManual.mutateAsync(note.trim()),
+                        "Marked verified by team.",
+                      );
+                    }}
+                  >
+                    Team verify
+                  </Button>
+                </div>
+              ) : undefined
+            }
+          />
+          <OnboardingStep
+            done={addUsersGate.ok && (users.data?.content.length ?? 0) > 0}
+            label="Add users"
+            action={
+              canManage && addUsersGate.ok ? (
+                <Link
+                  href={`/organizations/${orgId}/users/new`}
+                  className={cn(buttonVariants({ size: "sm", variant: "outline" }))}
+                >
+                  Add user
+                </Link>
+              ) : canManage && !addUsersGate.ok ? (
+                <span className="text-xs text-muted-foreground">{addUsersGate.reason}</span>
+              ) : undefined
+            }
+          />
+        </ol>
+        {org.tinValidationStatus !== "VALIDATED" && org.tinValidationReason && (
+          <p className="mt-3 text-sm text-muted-foreground">{org.tinValidationReason}</p>
+        )}
+      </section>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[
