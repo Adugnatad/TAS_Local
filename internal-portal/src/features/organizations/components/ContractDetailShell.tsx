@@ -197,13 +197,29 @@ export function ContractDetailShell({
             </div>
             <h1 className="text-2xl font-semibold tracking-tight">{org?.name ?? "Contract"}</h1>
           </div>
-          <Link
-            href="/organizations"
-            className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5")}
-          >
-            <ArrowLeft className="size-4" />
-            Back
-          </Link>
+          <div className="flex items-center gap-2">
+            {canWrite && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                disabled={lifecycle.revalidate.isPending}
+                onClick={() =>
+                  run(() => lifecycle.revalidate.mutateAsync(), "Business validation complete.")
+                }
+              >
+                <ShieldCheck className="size-4 text-emerald-600" />
+                {lifecycle.revalidate.isPending ? "Validating..." : "Validate Business"}
+              </Button>
+            )}
+            <Link
+              href="/organizations"
+              className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5")}
+            >
+              <ArrowLeft className="size-4" />
+              Back
+            </Link>
+          </div>
         </div>
 
         <div className="grid lg:grid-cols-[220px_1fr]">
@@ -242,6 +258,20 @@ export function ContractDetailShell({
 
             {canWrite && (
               <div className="mt-3 space-y-1 border-t pt-3">
+                <Button
+                  variant="ghost"
+                  className="h-auto w-full justify-start gap-2 px-3 py-2 text-muted-foreground"
+                  disabled={lifecycle.revalidate.isPending}
+                  onClick={() => {
+                    void run(
+                      () => lifecycle.revalidate.mutateAsync(),
+                      "Business validation complete.",
+                    );
+                  }}
+                >
+                  <ShieldCheck className="size-4 text-emerald-600" />
+                  {lifecycle.revalidate.isPending ? "Validating..." : "Validate Business"}
+                </Button>
                 {org?.status === "ACTIVE" && (
                   <Button
                     variant="ghost"

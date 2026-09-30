@@ -1,0 +1,8 @@
+{
+  "name": "TAS Corporate Portal",
+  "description": "Internal bank portal for organization onboarding, signatory matrix, and CRM status viewing.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

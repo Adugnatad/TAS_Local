@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-const API_UPSTREAM_URL = process.env.API_UPSTREAM_URL ?? "http://localhost:8080/api/v1";
+const API_UPSTREAM_URL = process.env.API_UPSTREAM_URL ?? "http://10.12.53.67:8080/api/v1";
 
 const FORWARD_REQUEST_HEADERS = [
   "authorization",

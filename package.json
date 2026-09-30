@@ -1,0 +1,14 @@
+{
+  "name": "tas-corporate-portal",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "internal-portal"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=internal-portal",
+    "build": "npm run build --workspace=internal-portal",
+    "start": "npm run start --workspace=internal-portal",
+    "lint": "npm run lint --workspace=internal-portal"
+  }
+}

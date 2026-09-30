@@ -3,9 +3,10 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { format, parseISO, isValid } from "date-fns";
-import { MoreVertical, Plus } from "lucide-react";
+import { MoreVertical, Plus, ShieldCheck } from "lucide-react";
 import { useOrganizations } from "../hooks";
 import { tinVerificationLabel } from "../tin";
+import { ValidateBusinessDialog } from "./ValidateBusinessDialog";
 import { useSession } from "@/features/auth/hooks/useSession";
 import { ORG_STATUSES, type OrgStatus } from "@/lib/constants";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -64,6 +65,8 @@ export function OrganizationListView() {
   const [activeOnly, setActiveOnly] = useState(false);
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(10);
+  const [validateDialogOpen, setValidateDialogOpen] = useState(false);
+  const [selectedOrgIdToValidate, setSelectedOrgIdToValidate] = useState("");
 
   const queryStatus = activeOnly ? "ACTIVE" : status;
   const query = useOrganizations({ q, status: queryStatus, page, size });
@@ -81,12 +84,25 @@ export function OrganizationListView() {
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-semibold tracking-tight">Contracts List</h1>
-        {can("MANAGE_ORGANIZATIONS") && (
-          <Link href="/organizations/new" className={cn(buttonVariants())}>
-            <Plus className="size-4" />
-            Create contract
-          </Link>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setSelectedOrgIdToValidate("");
+              setValidateDialogOpen(true);
+            }}
+            className="gap-1.5"
+          >
+            <ShieldCheck className="size-4" />
+            Validate Business
+          </Button>
+          {can("MANAGE_ORGANIZATIONS") && (
+            <Link href="/organizations/new" className={cn(buttonVariants())}>
+              <Plus className="size-4" />
+              Create contract
+            </Link>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
@@ -231,6 +247,14 @@ export function OrganizationListView() {
                             <DropdownMenuItem render={<Link href={`/organizations/${org.id}`} />}>
                               Open
                             </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSelectedOrgIdToValidate(org.id);
+                                setValidateDialogOpen(true);
+                              }}
+                            >
+                              Validate Business
+                            </DropdownMenuItem>
                             {can("MANAGE_ORGANIZATIONS") && (
                               <DropdownMenuItem
                                 render={<Link href={`/organizations/${org.id}/edit`} />}
@@ -270,6 +294,13 @@ export function OrganizationListView() {
           </div>
         </>
       )}
+
+      <ValidateBusinessDialog
+        open={validateDialogOpen}
+        onOpenChange={setValidateDialogOpen}
+        initialOrgId={selectedOrgIdToValidate}
+        onSuccess={() => query.refetch()}
+      />
     </div>
   );
 }

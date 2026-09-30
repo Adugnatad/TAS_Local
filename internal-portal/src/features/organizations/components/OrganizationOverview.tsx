@@ -175,7 +175,27 @@ export function OrganizationOverview({ orgId }: { orgId: string }) {
     { label: "Created by", value: org.createdBy ?? "—" },
     {
       label: "TIN validation",
-      value: <StatusBadge status={tin.status} label={tin.label} />,
+      value: (
+        <div className="flex items-center gap-2">
+          <StatusBadge status={tin.status} label={tin.label} />
+          {canManage && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-6 px-2 text-xs"
+              disabled={lifecycle.revalidate.isPending}
+              onClick={() =>
+                run(
+                  () => lifecycle.revalidate.mutateAsync(),
+                  "Business validation complete.",
+                )
+              }
+            >
+              {lifecycle.revalidate.isPending ? "Validating..." : "Validate Business"}
+            </Button>
+          )}
+        </div>
+      ),
     },
   ];
 
@@ -223,33 +243,50 @@ export function OrganizationOverview({ orgId }: { orgId: string }) {
           />
           <OnboardingStep
             done={org.tinValidationStatus === "VALIDATED"}
-            label="TIN verified"
+            label="TIN & Business verified"
             action={
-              canManage && org.tinValidationStatus !== "VALIDATED" ? (
-                <div className="flex gap-2">
+              canManage ? (
+                <div className="flex flex-wrap gap-2">
                   <Button
                     variant="outline"
                     size="sm"
+                    disabled={lifecycle.revalidate.isPending}
                     onClick={() =>
-                      run(() => lifecycle.verifyTin.mutateAsync(), "TIN verification complete.")
+                      run(
+                        () => lifecycle.revalidate.mutateAsync(),
+                        "Business validation complete.",
+                      )
                     }
                   >
-                    Verify TIN
+                    {lifecycle.revalidate.isPending ? "Validating..." : "Validate Business"}
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const note = window.prompt("Team verification note");
-                      if (!note?.trim()) return;
-                      void run(
-                        () => lifecycle.verifyManual.mutateAsync(note.trim()),
-                        "Marked verified by team.",
-                      );
-                    }}
-                  >
-                    Team verify
-                  </Button>
+                  {org.tinValidationStatus !== "VALIDATED" && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          run(() => lifecycle.verifyTin.mutateAsync(), "TIN verification complete.")
+                        }
+                      >
+                        Verify TIN
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const note = window.prompt("Team verification note");
+                          if (!note?.trim()) return;
+                          void run(
+                            () => lifecycle.verifyManual.mutateAsync(note.trim()),
+                            "Marked verified by team.",
+                          );
+                        }}
+                      >
+                        Team verify
+                      </Button>
+                    </>
+                  )}
                 </div>
               ) : undefined
             }
